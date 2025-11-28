@@ -28,9 +28,10 @@ interface Report {
 
 interface ReportsTabProps {
     selectedOperator?: string;
+    selectedMonth?: string;
 }
 
-export function ReportsTab({ selectedOperator = 'all' }: ReportsTabProps) {
+export function ReportsTab({ selectedOperator = 'all', selectedMonth = 'all' }: ReportsTabProps) {
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedReport, setExpandedReport] = useState<number | null>(null);
@@ -41,7 +42,7 @@ export function ReportsTab({ selectedOperator = 'all' }: ReportsTabProps) {
 
     useEffect(() => {
         loadReports();
-    }, [selectedOperator]);
+    }, [selectedOperator, selectedMonth]);
 
     const loadReports = async () => {
         try {
@@ -49,19 +50,30 @@ export function ReportsTab({ selectedOperator = 'all' }: ReportsTabProps) {
             const { reports: fetchedReports } = await reportsAPI.getAllReports();
 
             let filteredReports = fetchedReports || [];
-            if (selectedOperator !== 'all') {
+
+            // Filter by operator
+            if (selectedOperator !== "all") {
                 filteredReports = filteredReports.filter((report: Report) =>
-                    report.operator_name === selectedOperator || String(report.operator_id) === selectedOperator
+                    report.operator_name === selectedOperator ||
+                    String(report.operator_id) === selectedOperator
                 );
             }
 
-            const sortedReports = filteredReports.sort((a: Report, b: Report) =>
-                new Date(b.date_time).getTime() - new Date(a.date_time).getTime()
+            if (selectedMonth !== "all") {
+                filteredReports = filteredReports.filter((report: Report) => {
+                    const reportMonth = report.date_time.substring(0, 7);
+                    return reportMonth === selectedMonth;
+                });
+            }
+
+            const sortedReports = filteredReports.sort(
+                (a: Report, b: Report) =>
+                    new Date(b.date_time).getTime() - new Date(a.date_time).getTime()
             );
 
             setReports(sortedReports);
         } catch (error) {
-            console.error('Failed to load reports:', error);
+            console.error("Failed to load reports:", error);
         } finally {
             setLoading(false);
         }

@@ -142,18 +142,30 @@ export const reportsAPI = {
         return response.json();
     },
 
-    async reviewReport(reportId: string, action: 'approved' | 'rejected', notes: string) {
-        const response = await fetch(`${BASE_URL}/reports/${reportId}/review`, {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/json",
-                ...getAuthHeader()
-            },
-            body: JSON.stringify({ action, notes })
-        });
+    async reviewReport(reportId: string, action: 'approved' | 'rejected') {
+        if (action === 'approved') {
+            const response = await fetch(`${BASE_URL}/api/v1/reports/approve/${reportId}`, {
+                method: 'PUT',
+                headers: {
+                    "Content-Type": "application/json",
+                    ...getAuthHeader()
+                }
+            });
 
-        if (!response.ok) throw new Error("Failed to review report");
-        return response.json();
+            if (!response.ok) throw new Error("Failed to review report");
+            return response.json();
+        } else if (action === 'rejected') {
+            const response = await fetch(`${BASE_URL}/api/v1/reports/reject/${reportId}`, {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    ...getAuthHeader()
+                }
+            });
+
+            if (!response.ok) throw new Error("Failed to review report");
+            return response.json();
+        }
     },
 
     async compareWithEMS(reportId: string, emsData: any) {
@@ -268,7 +280,7 @@ export const managementAPI = {
                 "Content-Type": "application/json",
             },
         });
-x
+
         if (!res.ok) throw new Error("Failed to generate PDF");
 
         return await res.json();

@@ -32,24 +32,19 @@ export function MonthlySummaryGenerator() {
         try {
             setLoading(true);
 
-            // Call backend API
             const response = await managementAPI.generateMonthlySummary(selectedMonth);
 
-            // ❗ Validate response before using it
             if (!response || !response.content) {
                 throw new Error("Backend did not return PDF content");
             }
 
-            // Convert hex string -> byte array
             const hex = response.content.replace(/[^0-9a-f]/gi, "");
             const byteArray = new Uint8Array(
                 hex.match(/.{1,2}/g).map((b: string) => parseInt(b, 16))
             );
 
-            // Build PDF Blob
             const blob = new Blob([byteArray], { type: "application/pdf" });
 
-            // Trigger browser download
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
@@ -60,13 +55,7 @@ export function MonthlySummaryGenerator() {
 
         } catch (err: any) {
             console.error("Failed to download summary PDF:", err);
-
-            // If error response is HTML, show readable message
-            if (err?.response?.data?.includes?.("<!doctype")) {
-                alert("Backend returned HTML instead of JSON. Check endpoint or server error.");
-            } else {
-                alert("Failed to generate summary report");
-            }
+            alert("Failed to generate summary report");
         } finally {
             setLoading(false);
         }

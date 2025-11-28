@@ -27,6 +27,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [operators, setOperators] = useState<Operator[]>([]);
     const [selectedOperator, setSelectedOperator] = useState<string>('all');
+    const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [loadingOperators, setLoadingOperators] = useState(true)
 
     useEffect(() => {
@@ -98,46 +99,54 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <MonthlySummaryGenerator />
                 <div className="mb-6 bg-white border rounded-lg p-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6">
+
+                        {/* Operator Filter */}
                         <div className="flex items-center gap-2">
                             <Filter className="size-5 text-gray-600" />
-                            <Label htmlFor="operator-filter" className="text-sm font-medium">Filter by Operator:</Label>
+                            <Label htmlFor="operator-filter" className="text-sm font-medium">Operator:</Label>
                         </div>
                         <Select value={selectedOperator} onValueChange={setSelectedOperator}>
-                            <SelectTrigger id="operator-filter" className="w-[280px]">
+                            <SelectTrigger id="operator-filter" className="w-[200px]">
                                 <SelectValue placeholder="Loading operators..." />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">
-                                    <div className="flex items-center gap-2">
-                                        <Building2 className="size-4" />
-                                        <span>All Operators</span>
-                                    </div>
-                                </SelectItem>
-                                {operators.map((operator) => (
-                                    <SelectItem key={operator.operator_id} value={operator.operator_id.toString()}>
-                                        <div className="flex items-center gap-2">
-                                            <Building2 className="size-4 text-indigo-600" />
-                                            <span>{operator.operator_name}</span>
-                                        </div>
+                                <SelectItem value="all">All Operators</SelectItem>
+                                {operators.map(op => (
+                                    <SelectItem key={op.operator_id} value={op.operator_id.toString()}>
+                                        {op.operator_name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        {selectedOperator !== 'all' && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedOperator('all')}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                Clear Filter
-                            </Button>
-                        )}
+
+                        {/* Month Filter */}
+                        <div className="flex items-center gap-2">
+                            <Filter className="size-5 text-gray-600" />
+                            <Label htmlFor="month-filter" className="text-sm font-medium">Month:</Label>
+                        </div>
+                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                            <SelectTrigger id="month-filter" className="w-[180px]">
+                                <SelectValue placeholder="All Months" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Months</SelectItem>
+                                <SelectItem value="2025-01">Jan 2025</SelectItem>
+                                <SelectItem value="2025-02">Feb 2025</SelectItem>
+                                <SelectItem value="2025-03">Mar 2025</SelectItem>
+                                <SelectItem value="2025-04">Apr 2025</SelectItem>
+                                <SelectItem value="2025-05">May 2025</SelectItem>
+                                <SelectItem value="2025-06">Jun 2025</SelectItem>
+                                <SelectItem value="2025-07">Jul 2025</SelectItem>
+                                <SelectItem value="2025-08">Aug 2025</SelectItem>
+                                <SelectItem value="2025-09">Sep 2025</SelectItem>
+                                <SelectItem value="2025-10">Oct 2025</SelectItem>
+                                <SelectItem value="2025-11">Nov 2025</SelectItem>
+                                <SelectItem value="2025-12">Dec 2025</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
-
-
 
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                     {/* Tabs */}
@@ -206,11 +215,11 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                     </div>
 
                     <TabsContent value="overview">
-                        <AnalyticsOverview selectedOperator={selectedOperator} />
+                        <AnalyticsOverview selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
                     </TabsContent>
 
                     <TabsContent value="reports">
-                        <ReportsTab selectedOperator={selectedOperator} />
+                        <ReportsTab selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
                     </TabsContent>
 
                     <TabsContent value="approval">

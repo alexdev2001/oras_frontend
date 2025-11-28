@@ -14,7 +14,7 @@ export function ReportApproval() {
     const [isLoading, setIsLoading] = useState(true);
     const [expandedReports, setExpandedReports] = useState<Set<string>>(new Set());
     const [reviewingReport, setReviewingReport] = useState<OperatorReport | null>(null);
-    const [reviewNotes, setReviewNotes] = useState('');
+    const [reviewNotes, setReviewNotes] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -50,9 +50,8 @@ export function ReportApproval() {
 
         setIsSubmitting(true);
         try {
-            await reportsAPI.reviewReport(reviewingReport.id, action, reviewNotes);
+            await reportsAPI.reviewReport(reviewingReport.id, action);
             setReviewingReport(null);
-            setReviewNotes('');
             loadPendingReports();
         } catch (error) {
             console.error('Failed to review report:', error);
@@ -118,7 +117,11 @@ export function ReportApproval() {
                                                                 variant="outline"
                                                                 size="sm"
                                                                 className="text-green-600 hover:text-green-700"
-                                                                onClick={() => setReviewingReport(report)}
+                                                                onClick={() => {
+                                                                    setReviewingReport(report)
+                                                                    setReviewNotes('');
+                                                                    }
+                                                                }
                                                             >
                                                                 <CheckCircle className="size-4 mr-1" />
                                                                 Approve
@@ -131,23 +134,11 @@ export function ReportApproval() {
                                                                     Are you sure you want to approve this report from {report.operatorName}?
                                                                 </DialogDescription>
                                                             </DialogHeader>
-                                                            <div className="space-y-4 py-4">
-                                                                <div className="space-y-2">
-                                                                    <Label>Notes (optional)</Label>
-                                                                    <Textarea
-                                                                        value={reviewNotes}
-                                                                        onChange={(e) => setReviewNotes(e.target.value)}
-                                                                        placeholder="Add any notes about this approval..."
-                                                                        rows={3}
-                                                                    />
-                                                                </div>
-                                                            </div>
                                                             <div className="flex justify-end gap-2">
                                                                 <Button
                                                                     variant="outline"
                                                                     onClick={() => {
                                                                         setReviewingReport(null);
-                                                                        setReviewNotes('');
                                                                     }}
                                                                 >
                                                                     Cancel
