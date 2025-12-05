@@ -2,8 +2,17 @@ export interface DashboardAnalytics {
     monthlyTrends: MonthlyTrend[];
     operatorPerformance: OperatorPerformance[];
     productBreakdown: ProductBreakdown[];
+    operatorMonthlyTrends: OperatorMonthlyTrend[];
     totalReports: number;
 }
+
+export interface OperatorMonthlyTrend {
+    month: string;
+    operatorName: string;
+    totalGGR: number;
+    totalStake: number;
+}
+
 
 export interface ParsedMetric {
     metric_id: number;

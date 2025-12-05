@@ -17,7 +17,9 @@ import {
     ResponsiveContainer
 } from 'recharts';
 import { analyticsAPI } from "@/utils/API.ts";
-import type { DashboardAnalytics } from "@/types/report.ts";
+import type {DashboardAnalytics} from "@/types/report.ts";
+import type {OperatorPerformance} from "@/types/report.ts";
+
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
@@ -26,32 +28,59 @@ interface AnalyticsOverviewProps {
     selectedMonth?: string;
 }
 
+interface MarketShareData extends OperatorPerformance {
+    marketShare: number;
+    [key: string]: any;
+}
+
+
 export function AnalyticsOverview({
                                       selectedOperator = 'all',
                                       selectedMonth = 'all'
                                   }: AnalyticsOverviewProps) {
-
-    const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+    const [analytics, setAnalytics] =
+        useState<DashboardAnalytics | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    useEffect(() => {
+        loadAnalytics();
+    }, [selectedOperator, selectedMonth]);
+
+    const safeNumber = (val: any) =>
+        Number(val || 0);
+
+    const safeLocale = (val: any) =>
+        safeNumber(val).toLocaleString();
+
     const loadAnalytics = async () => {
+        setIsLoading(true);
         try {
-            setIsLoading(true);
+            const fetchedAnalytics = await analyticsAPI.getDashboardAnalytics();
+            let filtered = { ...fetchedAnalytics };
 
-            let operatorId: number | null = null;
-
+            // Filter by operator
             if (selectedOperator !== "all") {
-                operatorId = Number(selectedOperator);
+                filtered.operatorPerformance = filtered.operatorPerformance?.filter(
+                    op => op.operatorName === selectedOperator || op.operatorId === selectedOperator
+                ) || [];
 
-                if (isNaN(operatorId)) {
-                    console.error("Invalid operator ID");
-                    return;
-                }
+                filtered.operatorMonthlyTrends = filtered.operatorMonthlyTrends?.filter(
+                    t => t.operatorName === selectedOperator
+                ) || [];
             }
 
-            const fetched = await analyticsAPI.getAnalyticsByOperatorId(operatorId);
-            setAnalytics(fetched);
+            // Filter by month
+            if (selectedMonth !== "all") {
+                filtered.monthlyTrends = filtered.monthlyTrends?.filter(
+                    m => m.month === selectedMonth
+                ) || [];
 
+                filtered.operatorMonthlyTrends = filtered.operatorMonthlyTrends?.filter(
+                    t => t.month === selectedMonth
+                ) || [];
+            }
+
+            setAnalytics(filtered);
         } catch (error) {
             console.error("Failed to load analytics:", error);
         } finally {
@@ -59,15 +88,13 @@ export function AnalyticsOverview({
         }
     };
 
-    useEffect(() => {
-        loadAnalytics();
-    }, [selectedOperator]);
-
     if (isLoading) {
         return (
             <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                <p className="mt-4 text-gray-600">Loading analytics...</p>
+                <p className="mt-4 text-gray-600">
+                    Loading analytics...
+                </p>
             </div>
         );
     }
@@ -77,138 +104,116 @@ export function AnalyticsOverview({
             <Card>
                 <CardContent className="py-12 text-center">
                     <BarChart2 className="size-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">No approved reports available for analysis</p>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    // ----------------------------------------
-    // APPLY MONTH FILTER
-    // ----------------------------------------
-
-    const filteredAnalytics =
-        selectedMonth === "all"
-            ? analytics
-            : {
-                ...analytics,
-                monthlyTrends: analytics.monthlyTrends.filter(
-                    (m) => m.month === selectedMonth
-                ),
-            };
-
-    if (filteredAnalytics.monthlyTrends.length === 0) {
-        return (
-            <Card>
-                <CardContent className="py-12 text-center">
-                    <BarChart2 className="size-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">No data available for the selected month</p>
+                    <p className="text-gray-600">
+                        No approved reports available for analysis
+                    </p>
                 </CardContent>
             </Card>
         );
     }
 
     const latestMonth =
-        filteredAnalytics.monthlyTrends[filteredAnalytics.monthlyTrends.length - 1];
+        analytics.monthlyTrends[
+        analytics.monthlyTrends.length - 1
+            ] || { totalGGR: 0, totalStake: 0 };
     const previousMonth =
-        filteredAnalytics.monthlyTrends[filteredAnalytics.monthlyTrends.length - 2];
+        analytics.monthlyTrends[
+        analytics.monthlyTrends.length - 2
+            ] || null;
 
-    const formatMWK = (value: number) => {
-        if (value >= 1_000_000_000) return `MWK ${(value / 1_000_000_000).toFixed(1)}B`;
-        if (value >= 1_000_000) return `MWK ${(value / 1_000_000).toFixed(1)}M`;
-        return `MWK ${value.toLocaleString()}`;
-    };
+    const totalMarketGGR =
+        analytics.operatorPerformance.reduce(
+            (sum, op) => sum + safeNumber(op.totalGGR),
+            0
+        );
 
-    const ggrGrowth = previousMonth
-        ? ((latestMonth.totalGGR - previousMonth.totalGGR) / previousMonth.totalGGR) * 100
-        : 0;
+    const marketShareData: MarketShareData[] =
+        analytics.operatorPerformance.map((op) => ({
+            ...op,
+            marketShare:
+                (safeNumber(op.totalGGR) /
+                    (totalMarketGGR || 1)) *
+                100,
+        }));
 
-    const stakeGrowth = previousMonth
-        ? ((latestMonth.totalStake - previousMonth.totalStake) / previousMonth.totalStake) * 100
-        : 0;
+    const operatorTrendsData: Record<string, any> = {};
+
+    analytics.operatorMonthlyTrends?.forEach(trend => {
+        if (!operatorTrendsData[trend.month]) {
+            operatorTrendsData[trend.month] = { month: trend.month };
+        }
+        operatorTrendsData[trend.month][trend.operatorName] = trend.totalGGR;
+    });
+
+    const operatorTrendsArray = Object.values(operatorTrendsData).sort((a: any, b: any) =>
+        a.month.localeCompare(b.month)
+    );
+
+    const operatorNames = [...new Set(analytics.operatorMonthlyTrends?.map(t => t.operatorName) || [])];
 
     return (
         <div className="space-y-6">
-            {/* Key Metrics */}
+            {/* KEY METRICS */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-
-                {/* Total GGR */}
+                {/* --- TOTAL GGR --- */}
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Total GGR</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-2xl md:text-3xl ">
-                                MWK {latestMonth.totalGGR.toLocaleString()}
-                            </span>
-                            {ggrGrowth !== 0 && (
-                                <span
-                                    className={`text-sm md:text-base ${ggrGrowth > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {ggrGrowth > 0 ? '+' : ''}
-                                    {ggrGrowth.toFixed(1)}%
-                                </span>
-                            )}
-                        </div>
+                        <span className="text-2xl block">
+                            MWK {Number(latestMonth?.totalGGR || 0).toLocaleString()}
+                        </span>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
-                            <TrendingUp className="w-4 h-4" />
+                            <TrendingUp className="size-4" />
                             Latest month
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Total Stake */}
+                {/* TOTAL STAKE */}
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Total Stake</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-2xl md:text-3xl ">
-                                MWK {latestMonth.totalStake.toLocaleString()}
-                            </span>
-                            {stakeGrowth !== 0 && (
-                                <span
-                                    className={`text-sm md:text-base ${stakeGrowth > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {stakeGrowth > 0 ? '+' : ''}
-                                    {stakeGrowth.toFixed(1)}%
-                                </span>
-                            )}
-                        </div>
+                        <span className="text-2xl block">MWK {Number(latestMonth?.totalStake || 0).toLocaleString()}</span>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
-                            <DollarSign className="w-4 h-4" />
+                            <DollarSign className="size-4" />
                             Latest month
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Gaming Tax */}
+                {/* GAMING TAX */}
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Gaming Tax Collected</CardDescription>
+                        <CardDescription>
+                            Gaming Tax Collected
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl md:text-3xl">
-                            MWK {latestMonth.totalGamingTax.toLocaleString()}
+                        <div className="text-2xl">
+                            MWK {Number(latestMonth?.totalGamingTax || 0).toLocaleString()}
                         </div>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
-                            <Activity className="w-4 h-4" />
+                            <Activity className="size-4" />
                             20% of GGR
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* DET Levy */}
+                {/* DET LEVY */}
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>DET Levy</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl md:text-3xl">
-                            MWK {latestMonth.totalDETLevy.toLocaleString()}
+                        <div className="text-2xl">
+                            ${safeLocale(latestMonth.totalDETLevy)}
                         </div>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
-                            <BarChart2 className="w-4 h-4" />
+                            <BarChart2 className="size-4" />
                             5% of GGR
                         </div>
                     </CardContent>
@@ -224,66 +229,219 @@ export function AnalyticsOverview({
 
                 <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={filteredAnalytics.monthlyTrends}>
+                        <LineChart data={analytics.monthlyTrends}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+
+                            <XAxis dataKey="month" />
+
                             <YAxis
-                                tickFormatter={(value) => {
-                                    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-                                    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-                                    return value.toLocaleString();
-                                }}
+                                tickFormatter={(value) =>
+                                    value >= 1_000_000_000
+                                        ? `${(value / 1_000_000_000).toFixed(1)}B`
+                                        : value >= 1_000_000
+                                            ? `${(value / 1_000_000).toFixed(1)}M`
+                                            : value >= 1_000
+                                                ? `${(value / 1_000).toFixed(1)}K`
+                                                : value
+                                }
                             />
-                            <Tooltip formatter={(value: number) => formatMWK(value)} />
-                            <Legend wrapperStyle={{ fontSize: 12 }} />
-                            <Line type="monotone" dataKey="totalGGR" stroke="#3b82f6" strokeWidth={1.5} />
-                            <Line type="monotone" dataKey="totalStake" stroke="#10b981" strokeWidth={1.5} />
+
+                            <Tooltip
+                                formatter={(value: number) =>
+                                    `MWK ${value.toLocaleString()}`
+                                }
+                                labelFormatter={(label) => `Month: ${label}`}
+                            />
+
+                            <Legend />
+
+                            <Line
+                                type="monotone"
+                                dataKey="totalGGR"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                name="GGR (MWK)"
+                            />
+
+                            <Line
+                                type="monotone"
+                                dataKey="totalStake"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                name="Stake (MWK)"
+                            />
                         </LineChart>
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
 
-            {/* Product Breakdown */}
+            {/* Operator Market Share & GGR Comparison */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
+                {/* Operator Market Share */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>GGR by Product</CardTitle>
-                        <CardDescription>Breakdown by game type</CardDescription>
+                        <CardTitle>Operator Market Share</CardTitle>
+                        <CardDescription>Market share distribution by GGR</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
                                 <Pie
-                                    data={filteredAnalytics.productBreakdown}
+                                    data={marketShareData}
+                                    dataKey="marketShare"
+                                    nameKey="operatorName"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={100}
+                                    label={(entry: any) => `${entry.operatorName}: ${entry.marketShare.toFixed(1)}%`}
+                                >
+                                    {marketShareData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Total Market GGR:</span>
+                                <span>${totalMarketGGR.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Number of Operators:</span>
+                                <span>{analytics.operatorPerformance.length}</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Operator GGR Comparison */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Operator GGR Comparison</CardTitle>
+                        <CardDescription>Total GGR by operator</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart
+                                data={analytics.operatorPerformance}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+
+                                <XAxis
+                                    dataKey="operatorName"
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={80}
+                                />
+
+                                {/* Format Y-axis values */}
+                                <YAxis
+                                    tickFormatter={(value) =>
+                                        value >= 1_000_000_000
+                                            ? `${(value / 1_000_000_000).toFixed(1)}B`
+                                            : value >= 1_000_000
+                                                ? `${(value / 1_000_000).toFixed(1)}M`
+                                                : value >= 1_000
+                                                    ? `${(value / 1_000).toFixed(1)}K`
+                                                    : value
+                                    }
+                                />
+
+                                <Tooltip
+                                    formatter={(value: number) => `MWK ${value.toLocaleString()}`}
+                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                />
+
+                                <Bar dataKey="totalGGR" name="GGR (MWK)">
+                                    {analytics.operatorPerformance.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Operator GGR Trends Over Time */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Operator GGR Trends Over Time</CardTitle>
+                    <CardDescription>Compare GGR performance trends across all operators</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                        <LineChart data={operatorTrendsArray}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis
+                                tickFormatter={(value) =>
+                                    value >= 1_000_000_000
+                                        ? `${(value / 1_000_000_000).toFixed(1)}B`
+                                        : value >= 1_000_000
+                                            ? `${(value / 1_000_000).toFixed(1)}M`
+                                            : value >= 1_000
+                                                ? `${(value / 1_000).toFixed(1)}K`
+                                                : value
+                                }
+                            />
+                            <Tooltip
+                                formatter={(value: number) => `MWK ${value.toLocaleString()}`}
+                                labelFormatter={(label) => `Month: ${label}`}
+                            />
+                            <Legend />
+                            {operatorNames.map((name, index) => (
+                                <Line
+                                    key={name}
+                                    type="monotone"
+                                    dataKey={name}
+                                    stroke={COLORS[index % COLORS.length]}
+                                    strokeWidth={2}
+                                    name={name}
+                                />
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Product Breakdown */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Revenue by Product</CardTitle>
+                        <CardDescription>GGR breakdown by game type</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie
+                                    data={analytics.productBreakdown}
                                     dataKey="totalGGR"
                                     nameKey="gameType"
                                     cx="50%"
                                     cy="50%"
-                                    outerRadius={70}
-                                    label={(entry: any) => {
-                                        const value = entry.totalGGR;
-                                        let formatted =
-                                            value >= 1_000_000_000
-                                                ? `${(value / 1_000_000_000).toFixed(1)}B`
-                                                : value >= 1_000_000
-                                                    ? `${(value / 1_000_000).toFixed(1)}M`
-                                                    : value.toLocaleString();
-                                        return `MWK ${formatted}`;
+                                    outerRadius={100}
+                                    labelLine={true}
+                                    label={({ name, value }) => {
+                                        // Shorten name if too long
+                                        const shortName = name.length > 12 ? name.slice(0, 12) + '…' : name;
+                                        return `${shortName}: $${value.toLocaleString()}`;
                                     }}
                                 >
-                                    {filteredAnalytics.productBreakdown.map((entry, index) => (
-                                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                                    {analytics.productBreakdown.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip formatter={(value: number) => formatMWK(value)} />
-                                <Legend wrapperStyle={{ fontSize: 12 }} />
+                                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
-                {/* Product Performance Ranking */}
+                {/* Product Rankings */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Product Performance</CardTitle>
@@ -292,18 +450,36 @@ export function AnalyticsOverview({
                     <CardContent>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                                data={filteredAnalytics.productBreakdown.map(entry => ({
-                                    ...entry,
-                                    scaledGGR: entry.totalGGR / 1_000_000,
-                                }))}
+                                data={analytics.productBreakdown}
                                 layout="vertical"
-                                margin={{ left: 50, right: 20 }}
+                                margin={{ top: 20, right: 30, left: 150, bottom: 20 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" tickFormatter={(value) => `${value.toFixed(0)}M`} />
-                                <YAxis dataKey="gameType" type="category" width={120} />
-                                <Tooltip formatter={(value: number) => `MWK ${(value * 1_000_000).toLocaleString()}`} />
-                                <Bar dataKey="scaledGGR" fill="#3b82f6" name="GGR (Millions)" />
+
+                                <XAxis type="number"
+                                       tickFormatter={(value) =>
+                                           value >= 1_000_000_000
+                                               ? `${(value / 1_000_000_000).toFixed(1)}B`
+                                               : value >= 1_000_000
+                                                   ? `${(value / 1_000_000).toFixed(1)}M`
+                                                   : value >= 1_000
+                                                       ? `${(value / 1_000).toFixed(1)}K`
+                                                       : value
+                                       }
+                                />
+
+                                <YAxis
+                                    dataKey="gameType"
+                                    type="category"
+                                    width={150}
+                                    tick={{ fontSize: 12 }}
+                                />
+
+                                <Tooltip
+                                    formatter={(value: number) => `MWK ${value.toLocaleString()}`}
+                                />
+
+                                <Bar dataKey="totalGGR" fill="#3b82f6" name="GGR" />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -314,14 +490,12 @@ export function AnalyticsOverview({
             <Card>
                 <CardHeader>
                     <CardTitle>Operator Performance</CardTitle>
-                    <CardDescription>Top operators ranked by GGR</CardDescription>
+                    <CardDescription>Top operators by GGR</CardDescription>
                 </CardHeader>
-
                 <CardContent>
                     <div className="space-y-4">
-                        {filteredAnalytics.operatorPerformance.map((operator, index) => {
+                        {analytics.operatorPerformance.map((operator, index) => {
                             const ggrPercentage = (operator.totalGGR / operator.totalStake) * 100;
-
                             return (
                                 <div key={operator.operatorName} className="border rounded-lg p-4">
                                     <div className="flex items-center justify-between mb-2">
@@ -334,13 +508,11 @@ export function AnalyticsOverview({
                                                 <p className="text-sm text-gray-500">{operator.reportCount} reports</p>
                                             </div>
                                         </div>
-
                                         <div className="text-right">
-                                            <p className="text-xl">MWK {operator.totalGGR.toLocaleString()}</p>
+                                            <p className="text-xl">${operator.totalGGR.toLocaleString()}</p>
                                             <p className="text-sm text-gray-500">{ggrPercentage.toFixed(2)}% GGR</p>
                                         </div>
                                     </div>
-
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                         <div
                                             className="bg-indigo-600 h-2 rounded-full"
@@ -358,17 +530,29 @@ export function AnalyticsOverview({
             <Card>
                 <CardHeader>
                     <CardTitle>Tax & Levy Collection</CardTitle>
-                    <CardDescription>Monthly gaming tax and DET levy</CardDescription>
+                    <CardDescription>Monthly breakdown of gaming tax and DET levy</CardDescription>
                 </CardHeader>
-
                 <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={filteredAnalytics.monthlyTrends}>
+                        <BarChart data={analytics.monthlyTrends}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="month" />
-                            <YAxis tickFormatter={(value) => `MWK ${(value / 1_000_000).toFixed(1)}M`} />
-                            <Tooltip formatter={(value: number) => `MWK ${value.toLocaleString()}`} />
-                            <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+
+                            <YAxis
+                                tickFormatter={(value) =>
+                                    value >= 1_000_000_000
+                                        ? `${(value / 1_000_000_000).toFixed(1)}B`
+                                        : value >= 1_000_000
+                                            ? `${(value / 1_000_000).toFixed(1)}M`
+                                            : value >= 1_000
+                                                ? `${(value / 1_000).toFixed(1)}K`
+                                                : value
+                                }
+                            />
+
+                            <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                            <Legend />
+
                             <Bar dataKey="totalGamingTax" fill="#ef4444" name="Gaming Tax (20%)" />
                             <Bar dataKey="totalDETLevy" fill="#f59e0b" name="DET Levy (5%)" />
                         </BarChart>

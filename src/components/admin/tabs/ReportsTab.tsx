@@ -5,7 +5,7 @@ import { Badge } from '../../ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { FileText, Download, Calendar, Building2, User, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
 import { reportsAPI } from '@/utils/API.ts';
-import * as XLSX from 'xlsx';
+
 
 interface ReportFile {
     file_id: number;
@@ -13,7 +13,7 @@ interface ReportFile {
     file_size?: number;
 }
 
-interface Report {
+export interface Report {
     report_id: number;
     date_time: string;
     opening_balances_total: number;

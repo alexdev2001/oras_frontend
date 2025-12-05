@@ -3,7 +3,6 @@ import {Button} from "@/components/ui/button.tsx";
 import { LogOut, BarChart3, FileCheck, AlertTriangle, Users, Database, FileText, Filter, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
 import {AnalyticsOverview} from "@/components/admin/tabs/AnalyticsOverview.tsx";
-import {ReportApproval} from "@/components/admin/tabs/ReportApproval.tsx";
 import {ReconciliationView} from "@/components/admin/tabs/ReconciliationView.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Label } from '@/components/ui/label.tsx';
@@ -199,10 +198,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                 <FileText className="size-4 mr-2" />
                                 Reports
                             </TabsTrigger>
-                            <TabsTrigger value="approval">
-                                <FileCheck className="size-4 mr-2" />
-                                Report Approval
-                            </TabsTrigger>
                             <TabsTrigger value="reconciliation">
                                 <Database className="size-4 mr-2" />
                                 EMS Reconciliation
@@ -220,10 +215,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
 
                     <TabsContent value="reports">
                         <ReportsTab selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
-                    </TabsContent>
-
-                    <TabsContent value="approval">
-                        <ReportApproval />
                     </TabsContent>
 
                     <TabsContent value="reconciliation">

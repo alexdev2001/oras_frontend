@@ -9,6 +9,7 @@ import type { OperatorReport, EMSComparison } from '@/types/report.ts';
 import { AlertCircle, CheckCircle, Search, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog.tsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
+import type {Report} from "@/components/admin/tabs/ReportsTab.tsx";
 
 export function ReconciliationView() {
     const [approvedReports, setApprovedReports] = useState<OperatorReport[]>([]);
@@ -22,14 +23,55 @@ export function ReconciliationView() {
     const [isLoading, setIsLoading] = useState(true);
     const [isComparing, setIsComparing] = useState(false);
 
+    const formatNumber = (value) => {
+        if (!value) return "";
+
+        if (value.endsWith(".")) return Number(value.slice(0, -1)).toLocaleString("en-US") + ".";
+
+        if (value.includes(".")) {
+            const [intPart, decPart] = value.split(".");
+            const formattedInt = Number(intPart).toLocaleString("en-US");
+            return `${formattedInt}.${decPart}`;
+        }
+
+        return Number(value).toLocaleString("en-US");
+    };
+
+    const handleChangeGGR = (e) => {
+        let raw = e.target.value;
+
+        raw = raw.replace(/,/g, "");
+
+        if (!/^\d*\.?\d*$/.test(raw)) return;
+
+        setEmsData({
+            ...emsData,
+            totalGGR: formatNumber(raw)
+        });
+    };
+
+    const handleChangeStake = (e) => {
+        let raw = e.target.value;
+
+        raw = raw.replace(/,/g, "");
+
+        if (!/^\d*\.?\d*$/.test(raw)) return;
+
+        setEmsData({
+            ...emsData,
+            totalStake: formatNumber(raw)
+        });
+    };
+
     useEffect(() => {
-        loadApprovedReports();
+        loadReports();
     }, []);
 
-    const loadApprovedReports = async () => {
+    const loadReports = async () => {
         setIsLoading(true);
         try {
-            const { reports } = await reportsAPI.getApprovedReports();
+            const   reports   = await reportsAPI.getPendingReports();
+            console.log("reports: ", reports);
             setApprovedReports(reports.sort((a: OperatorReport, b: OperatorReport) =>
                 new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
             ));
@@ -40,21 +82,73 @@ export function ReconciliationView() {
         }
     };
 
+    // const handleCompare = async () => {
+    //     if (!selectedReport) return;
+    //
+    //     setIsComparing(true);
+    //     try {
+    //         const { comparison: result } = await reportsAPI.compareWithEMS(selectedReport.id, {
+    //             totalGGR: parseFloat(emsData.totalGGR),
+    //             totalStake: parseFloat(emsData.totalStake),
+    //             totalBetCount: parseInt(emsData.totalBetCount)
+    //         });
+    //         setComparison(result);
+    //     } catch (error) {
+    //         console.error('Failed to compare with EMS:', error);
+    //     } finally {
+    //         setIsComparing(false);
+    //     }
+    // };
+
     const handleCompare = async () => {
         if (!selectedReport) return;
 
-        setIsComparing(true);
-        try {
-            const { comparison: result } = await reportsAPI.compareWithEMS(selectedReport.id, {
-                totalGGR: parseFloat(emsData.totalGGR),
-                totalStake: parseFloat(emsData.totalStake),
-                totalBetCount: parseInt(emsData.totalBetCount)
+        const reportGGR = selectedReport.totalGGR;
+        const emsGGR = parseFloat(emsData.totalGGR.replace(/,/g, ""));
+
+        if (isNaN(emsGGR)) return;
+
+        const percentDiff = Math.abs(emsGGR - reportGGR) / reportGGR * 100;
+
+        const isMatch = percentDiff <= 2;
+
+        if (isMatch) {
+            // 1️⃣ Immediately approve via backend
+            try {
+                await reportsAPI.reviewReport(selectedReport.id, 'approved');
+
+                setComparison({
+                    reportId: selectedReport.id,
+                    operatorName: selectedReport.operatorName,
+                    month: selectedReport.month,
+                    year: selectedReport.year,
+                    matchStatus: "matched",
+                    discrepancies: []
+                });
+
+            } catch (error) {
+                console.error("Approval error:", error);
+                alert("Failed to approve report.");
+            }
+        }
+        else {
+            // Handle mismatch
+            setComparison({
+                reportId: selectedReport.id,
+                operatorName: selectedReport.operatorName,
+                month: selectedReport.month,
+                year: selectedReport.year,
+                matchStatus: "mismatch",
+                discrepancies: [
+                    {
+                        field: "GGR",
+                        reportValue: reportGGR,
+                        emsValue: emsGGR,
+                        percentDifference: percentDiff,
+                        difference: emsGGR - reportGGR
+                    }
+                ]
             });
-            setComparison(result);
-        } catch (error) {
-            console.error('Failed to compare with EMS:', error);
-        } finally {
-            setIsComparing(false);
         }
     };
 
@@ -117,15 +211,23 @@ export function ReconciliationView() {
                                     <div className="grid grid-cols-3 gap-4">
                                         <div>
                                             <p className="text-sm text-gray-500">Total GGR</p>
-                                            <p className="font-medium">${selectedReport.totalGGR?.toLocaleString()}</p>
+                                            <p className="font-medium">
+                                                MWK {selectedReport.totalGGR?.toLocaleString("en-US")}
+                                            </p>
                                         </div>
+
                                         <div>
                                             <p className="text-sm text-gray-500">Total Stake</p>
-                                            <p className="font-medium">${selectedReport.totalStake?.toLocaleString()}</p>
+                                            <p className="font-medium">
+                                                MWK {selectedReport.totalStake?.toLocaleString("en-US")}
+                                            </p>
                                         </div>
+
                                         <div>
                                             <p className="text-sm text-gray-500">Total Bet Count</p>
-                                            <p className="font-medium">{selectedReport.totalBetCount?.toLocaleString()}</p>
+                                            <p className="font-medium">
+                                                {selectedReport.totalBetCount?.toLocaleString("en-US")}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -134,24 +236,26 @@ export function ReconciliationView() {
                                     <h4 className="font-medium mb-3">Enter EMS Data</h4>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="ems-ggr">EMS Total GGR ($)</Label>
+                                            <Label htmlFor="ems-ggr">EMS Total GGR (MWK)</Label>
                                             <Input
                                                 id="ems-ggr"
-                                                type="number"
-                                                step="0.01"
+                                                type="text"
+                                                inputMode="decimal"
+                                                pattern="[0-9]*[.,]?[0-9]*"
                                                 value={emsData.totalGGR}
-                                                onChange={(e) => setEmsData({ ...emsData, totalGGR: e.target.value })}
+                                                onChange={handleChangeGGR}
                                                 placeholder="0.00"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="ems-stake">EMS Total Stake ($)</Label>
+                                            <Label htmlFor="ems-stake">EMS Total Stake (MWK)</Label>
                                             <Input
-                                                id="ems-stake"
-                                                type="number"
-                                                step="0.01"
+                                                id="ems-ggr"
+                                                type="text"
+                                                inputMode="decimal"
+                                                pattern="[0-9]*[.,]?[0-9]*"
                                                 value={emsData.totalStake}
-                                                onChange={(e) => setEmsData({ ...emsData, totalStake: e.target.value })}
+                                                onChange={handleChangeStake}
                                                 placeholder="0.00"
                                             />
                                         </div>
@@ -298,11 +402,15 @@ export function ReconciliationView() {
                                                     <div className="grid grid-cols-2 gap-3 text-sm">
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Total Stake</p>
-                                                            <p className="font-medium">${selectedReport?.totalStake.toLocaleString()}</p>
+                                                            <p className="font-medium">
+                                                                MWK {selectedReport?.totalGGR?.toLocaleString("en-US") ?? "0"}
+                                                            </p>
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Total GGR</p>
-                                                            <p className="font-medium">${selectedReport?.totalGGR.toLocaleString()}</p>
+                                                            <p className="font-medium">
+                                                                MWK {selectedReport?.totalStake?.toLocaleString("en-US") ?? "0"}
+                                                            </p>
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">GGR %</p>
@@ -310,7 +418,9 @@ export function ReconciliationView() {
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Total Bet Count</p>
-                                                            <p className="font-medium">{selectedReport?.totalBetCount.toLocaleString()}</p>
+                                                            <p className="font-medium">
+                                                                {selectedReport?.totalBetCount?.toLocaleString("en-US") ?? "0"}
+                                                            </p>
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Gaming Tax</p>
@@ -325,22 +435,33 @@ export function ReconciliationView() {
                                                 <div>
                                                     <h4 className="font-medium mb-2">Game Breakdown</h4>
                                                     <div className="space-y-2 text-sm">
-                                                        {selectedReport?.gameBreakdown.map((game, index) => (
+                                                        {selectedReport?.gameBreakdown?.map((game, index) => (
                                                             <div key={index} className="bg-gray-50 p-3 rounded">
-                                                                <p className="font-medium mb-2">{game.gameType}</p>
+                                                                <p className="font-medium mb-2">{game?.gameType ?? "Unknown"}</p>
+
                                                                 <div className="grid grid-cols-3 gap-2 text-xs">
+
                                                                     <div>
                                                                         <p className="text-gray-500">Stake</p>
-                                                                        <p>${game.stake.toLocaleString()}</p>
+                                                                        <p>
+                                                                            MWK {Number(game?.stake ?? 0).toLocaleString("en-US")}
+                                                                        </p>
                                                                     </div>
+
                                                                     <div>
                                                                         <p className="text-gray-500">GGR</p>
-                                                                        <p>${game.ggr.toLocaleString()}</p>
+                                                                        <p>
+                                                                            MWK {Number(game?.ggr ?? 0).toLocaleString("en-US")}
+                                                                        </p>
                                                                     </div>
+
                                                                     <div>
                                                                         <p className="text-gray-500">Bets</p>
-                                                                        <p>{game.betCount.toLocaleString()}</p>
+                                                                        <p>
+                                                                            {Number(game?.betCount ?? 0).toLocaleString("en-US")}
+                                                                        </p>
                                                                     </div>
+
                                                                 </div>
                                                             </div>
                                                         ))}
