@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { reportsAPI } from '@/utils/API.ts';
 import type { OperatorReport, EMSComparison } from '@/types/report.ts';
-import { AlertCircle, CheckCircle, Search, FileText } from 'lucide-react';
+import { AlertCircle, CheckCircle, Search, FileText, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog.tsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
+import {Textarea} from "@/components/ui/textarea.tsx";
 import type {Report} from "@/components/admin/tabs/ReportsTab.tsx";
 
 export function ReconciliationView() {
@@ -22,6 +23,9 @@ export function ReconciliationView() {
     const [comparison, setComparison] = useState<EMSComparison | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isComparing, setIsComparing] = useState(false);
+    const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [isRejecting, setIsRejecting] = useState(false);
 
     const formatNumber = (value) => {
         if (!value) return "";
@@ -82,24 +86,6 @@ export function ReconciliationView() {
         }
     };
 
-    // const handleCompare = async () => {
-    //     if (!selectedReport) return;
-    //
-    //     setIsComparing(true);
-    //     try {
-    //         const { comparison: result } = await reportsAPI.compareWithEMS(selectedReport.id, {
-    //             totalGGR: parseFloat(emsData.totalGGR),
-    //             totalStake: parseFloat(emsData.totalStake),
-    //             totalBetCount: parseInt(emsData.totalBetCount)
-    //         });
-    //         setComparison(result);
-    //     } catch (error) {
-    //         console.error('Failed to compare with EMS:', error);
-    //     } finally {
-    //         setIsComparing(false);
-    //     }
-    // };
-
     const handleCompare = async () => {
         if (!selectedReport) return;
 
@@ -109,13 +95,13 @@ export function ReconciliationView() {
         if (isNaN(emsGGR)) return;
 
         const percentDiff = Math.abs(emsGGR - reportGGR) / reportGGR * 100;
-
         const isMatch = percentDiff <= 2;
 
         if (isMatch) {
-            // 1️⃣ Immediately approve via backend
             try {
                 await reportsAPI.reviewReport(selectedReport.id, 'approved');
+
+                await reportsAPI.notifyOperators(Number(selectedReport.operatorId));
 
                 setComparison({
                     reportId: selectedReport.id,
@@ -130,9 +116,7 @@ export function ReconciliationView() {
                 console.error("Approval error:", error);
                 alert("Failed to approve report.");
             }
-        }
-        else {
-            // Handle mismatch
+        } else {
             setComparison({
                 reportId: selectedReport.id,
                 operatorName: selectedReport.operatorName,
@@ -156,6 +140,31 @@ export function ReconciliationView() {
         setSelectedReport(null);
         setComparison(null);
         setEmsData({ totalGGR: '', totalStake: '', totalBetCount: '' });
+    };
+
+    const handleReject = async () => {
+        if (!selectedReport || !rejectionReason.trim()) return;
+
+        setIsRejecting(true);
+        try {
+            await reportsAPI.reviewReport(selectedReport.id, 'rejected');
+            try {
+                await reportsAPI.notifyReportRejection(
+                    Number(selectedReport.operatorId),
+                    rejectionReason
+                );
+            } catch (e) {
+                console.error('Failed to send rejection notification:', e);
+            }
+            resetComparison();
+            await loadReports();
+
+        } catch (error) {
+            console.error('Failed to reject report:', error);
+        } finally {
+            setIsRejecting(false);
+            setIsRejectDialogOpen(false);
+        }
     };
 
     if (isLoading) {
@@ -184,6 +193,7 @@ export function ReconciliationView() {
                                 onValueChange={(value) => {
                                     const report = approvedReports.find(r => r.id === value);
                                     setSelectedReport(report || null);
+                                    console.log('selectedReport ', report);
                                     setComparison(null);
                                 }}
                             >
@@ -378,6 +388,56 @@ export function ReconciliationView() {
                                     <Button variant="outline" onClick={resetComparison}>
                                         Compare Another Report
                                     </Button>
+                                    {comparison.matchStatus !== 'matched' && (
+                                        <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="destructive">
+                                                    <XCircle className="size-4 mr-2" />
+                                                    Reject Report
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Reject Report</DialogTitle>
+                                                    <DialogDescription>
+                                                        Provide a detailed reason for rejecting this report. The operator will be notified.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="rejection-reason">Reason for Rejection</Label>
+                                                        <Textarea
+                                                            id="rejection-reason"
+                                                            placeholder="Describe the issues found during reconciliation and why the report is being rejected..."
+                                                            value={rejectionReason}
+                                                            onChange={(e) => setRejectionReason(e.target.value)}
+                                                            className="min-h-32"
+                                                        />
+                                                    </div>
+                                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                                        <p className="text-sm text-yellow-800">
+                                                            <strong>Note:</strong> Rejecting this report will change its status to "Rejected" and notify the operator to submit a corrected version.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2">
+                                                    <Button variant="outline" onClick={() => {
+                                                        setIsRejectDialogOpen(false);
+                                                        setRejectionReason('');
+                                                    }}>
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        onClick={handleReject}
+                                                        disabled={isRejecting || !rejectionReason.trim()}
+                                                    >
+                                                        {isRejecting ? 'Submitting...' : 'Submit Rejection'}
+                                                    </Button>
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
                                     <Dialog>
                                         <DialogTrigger asChild>
                                             <Button variant="outline">
@@ -402,15 +462,11 @@ export function ReconciliationView() {
                                                     <div className="grid grid-cols-2 gap-3 text-sm">
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Total Stake</p>
-                                                            <p className="font-medium">
-                                                                MWK {selectedReport?.totalGGR?.toLocaleString("en-US") ?? "0"}
-                                                            </p>
+                                                            <p className="font-medium">${selectedReport?.totalStake.toLocaleString()}</p>
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Total GGR</p>
-                                                            <p className="font-medium">
-                                                                MWK {selectedReport?.totalStake?.toLocaleString("en-US") ?? "0"}
-                                                            </p>
+                                                            <p className="font-medium">${selectedReport?.totalGGR.toLocaleString()}</p>
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">GGR %</p>
@@ -418,9 +474,7 @@ export function ReconciliationView() {
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Total Bet Count</p>
-                                                            <p className="font-medium">
-                                                                {selectedReport?.totalBetCount?.toLocaleString("en-US") ?? "0"}
-                                                            </p>
+                                                            <p className="font-medium">{selectedReport?.totalBetCount.toLocaleString()}</p>
                                                         </div>
                                                         <div className="bg-gray-50 p-3 rounded">
                                                             <p className="text-gray-500">Gaming Tax</p>
@@ -435,33 +489,14 @@ export function ReconciliationView() {
                                                 <div>
                                                     <h4 className="font-medium mb-2">Game Breakdown</h4>
                                                     <div className="space-y-2 text-sm">
-                                                        {selectedReport?.gameBreakdown?.map((game, index) => (
+                                                        {selectedReport?.gameBreakdown.map((game, index) => (
                                                             <div key={index} className="bg-gray-50 p-3 rounded">
-                                                                <p className="font-medium mb-2">{game?.gameType ?? "Unknown"}</p>
-
+                                                                <p className="font-medium mb-2">{game.gameType}</p>
                                                                 <div className="grid grid-cols-3 gap-2 text-xs">
-
                                                                     <div>
                                                                         <p className="text-gray-500">Stake</p>
-                                                                        <p>
-                                                                            MWK {Number(game?.stake ?? 0).toLocaleString("en-US")}
-                                                                        </p>
+                                                                        <p>${game.stake.toLocaleString()}</p>
                                                                     </div>
-
-                                                                    <div>
-                                                                        <p className="text-gray-500">GGR</p>
-                                                                        <p>
-                                                                            MWK {Number(game?.ggr ?? 0).toLocaleString("en-US")}
-                                                                        </p>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <p className="text-gray-500">Bets</p>
-                                                                        <p>
-                                                                            {Number(game?.betCount ?? 0).toLocaleString("en-US")}
-                                                                        </p>
-                                                                    </div>
-
                                                                 </div>
                                                             </div>
                                                         ))}

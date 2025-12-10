@@ -36,6 +36,7 @@ export function OperatorUserManagement() {
     const [showUserDialog, setShowUserDialog] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [editingUser, setEditingUser] = useState<User | null>(null);
 
     // Operator form state
     const [operatorForm, setOperatorForm] = useState({
@@ -49,7 +50,7 @@ export function OperatorUserManagement() {
         full_name: '',
         password: '',
         operator_id: '',
-        role: 'operator'
+        roles: ['operator']
     });
 
     useEffect(() => {
@@ -90,6 +91,17 @@ export function OperatorUserManagement() {
         }
     };
 
+    const openEditUserDialog = (user: User) => {
+        setEditingUser(user);
+        setUserForm({
+            email: user.email,
+            full_name: user.full_name,
+            password: '',
+            operator_id: user.operator_id ? String(user.operator_id) : 'none',
+            roles: user.roles?.[0] || ['operator']
+        });
+    };
+
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -97,20 +109,27 @@ export function OperatorUserManagement() {
 
         try {
             const userData = {
-                ...userForm,
-                operator_id: userForm.operator_id ? parseInt(userForm.operator_id) : null
+                email: userForm.email,
+                full_name: userForm.full_name,
+                password: userForm.password,
+                operator_id: userForm.operator_id ? parseInt(userForm.operator_id) : null,
+                roles: userForm.roles
             };
+
             await managementAPI.createUser(userData);
+
             setSuccess('User created successfully!');
             setUserForm({
                 email: '',
                 full_name: '',
                 password: '',
                 operator_id: '',
-                role: 'operator'
+                roles: ['operator']
             });
+
             setShowUserDialog(false);
             loadData();
+
             setTimeout(() => setSuccess(''), 3000);
         } catch (err: any) {
             setError(err.message || 'Failed to create user');
@@ -374,7 +393,7 @@ export function OperatorUserManagement() {
                                                             <CheckCircle className="size-4 text-green-600" />
                                                         )}
                                                     </Button>
-                                                    <Button variant="ghost" size="sm">
+                                                    <Button variant="ghost" size="sm" onClick={() => openEditUserDialog(user)}>
                                                         <Edit className="size-4" />
                                                     </Button>
                                                 </div>

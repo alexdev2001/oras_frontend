@@ -44,7 +44,7 @@ export function AnalyticsOverview({
 
     useEffect(() => {
         loadAnalytics();
-    }, [selectedOperator, selectedMonth]);
+    }, [selectedOperator]);
 
     const safeNumber = (val: any) =>
         Number(val || 0);
@@ -52,35 +52,25 @@ export function AnalyticsOverview({
     const safeLocale = (val: any) =>
         safeNumber(val).toLocaleString();
 
+
     const loadAnalytics = async () => {
-        setIsLoading(true);
         try {
-            const fetchedAnalytics = await analyticsAPI.getDashboardAnalytics();
-            let filtered = { ...fetchedAnalytics };
+            setIsLoading(true);
 
-            // Filter by operator
+            let operatorId: number | null = null;
+
             if (selectedOperator !== "all") {
-                filtered.operatorPerformance = filtered.operatorPerformance?.filter(
-                    op => op.operatorName === selectedOperator || op.operatorId === selectedOperator
-                ) || [];
+                operatorId = Number(selectedOperator);
 
-                filtered.operatorMonthlyTrends = filtered.operatorMonthlyTrends?.filter(
-                    t => t.operatorName === selectedOperator
-                ) || [];
+                if (isNaN(operatorId)) {
+                    console.error("Invalid operator ID");
+                    return;
+                }
             }
 
-            // Filter by month
-            if (selectedMonth !== "all") {
-                filtered.monthlyTrends = filtered.monthlyTrends?.filter(
-                    m => m.month === selectedMonth
-                ) || [];
+            const fetched = await analyticsAPI.getAnalyticsByOperatorId(operatorId);
+            setAnalytics(fetched);
 
-                filtered.operatorMonthlyTrends = filtered.operatorMonthlyTrends?.filter(
-                    t => t.month === selectedMonth
-                ) || [];
-            }
-
-            setAnalytics(filtered);
         } catch (error) {
             console.error("Failed to load analytics:", error);
         } finally {
@@ -107,6 +97,27 @@ export function AnalyticsOverview({
                     <p className="text-gray-600">
                         No approved reports available for analysis
                     </p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const filteredAnalytics =
+        selectedMonth === "all"
+            ? analytics
+            : {
+                ...analytics,
+                monthlyTrends: analytics.monthlyTrends.filter(
+                    (m) => m.month === selectedMonth
+                ),
+            };
+
+    if (filteredAnalytics.monthlyTrends.length === 0) {
+        return (
+            <Card>
+                <CardContent className="py-12 text-center">
+                    <BarChart2 className="size-12 mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-600">No data available for the selected month</p>
                 </CardContent>
             </Card>
         );
@@ -198,7 +209,7 @@ export function AnalyticsOverview({
                         </div>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
                             <Activity className="size-4" />
-                            20% of GGR
+                            12.5% of GGR
                         </div>
                     </CardContent>
                 </Card>
@@ -210,11 +221,11 @@ export function AnalyticsOverview({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl">
-                            ${safeLocale(latestMonth.totalDETLevy)}
+                            MWK {safeLocale(latestMonth.totalDETLevy)}
                         </div>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
                             <BarChart2 className="size-4" />
-                            5% of GGR
+                            15% of GGR
                         </div>
                     </CardContent>
                 </Card>
@@ -305,7 +316,12 @@ export function AnalyticsOverview({
                         <div className="mt-4 space-y-2">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-600">Total Market GGR:</span>
-                                <span>${totalMarketGGR.toLocaleString()}</span>
+                                <span>
+                                      {new Intl.NumberFormat('en-MW', {
+                                          style: 'currency',
+                                          currency: 'MWK'
+                                      }).format(totalMarketGGR)}
+                                </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-600">Number of Operators:</span>
@@ -426,16 +442,23 @@ export function AnalyticsOverview({
                                     outerRadius={100}
                                     labelLine={true}
                                     label={({ name, value }) => {
-                                        // Shorten name if too long
                                         const shortName = name.length > 12 ? name.slice(0, 12) + '…' : name;
-                                        return `${shortName}: $${value.toLocaleString()}`;
+                                        return `${shortName}: MK ${value.toLocaleString()}`;
                                     }}
                                 >
                                     {analytics.productBreakdown.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+
+                                <Tooltip
+                                    formatter={(value: number) =>
+                                        new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: 'MWK'
+                                        }).format(value)
+                                    }
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -509,7 +532,10 @@ export function AnalyticsOverview({
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xl">${operator.totalGGR.toLocaleString()}</p>
+                                            <p className="text-xl">
+                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MWK' })
+                                                    .format(operator.totalGGR)}
+                                            </p>
                                             <p className="text-sm text-gray-500">{ggrPercentage.toFixed(2)}% GGR</p>
                                         </div>
                                     </div>
@@ -543,18 +569,25 @@ export function AnalyticsOverview({
                                     value >= 1_000_000_000
                                         ? `${(value / 1_000_000_000).toFixed(1)}B`
                                         : value >= 1_000_000
-                                            ? `${(value / 1_000_000).toFixed(1)}M`
+                                            ? ` ${(value / 1_000_000).toFixed(1)}M`
                                             : value >= 1_000
-                                                ? `${(value / 1_000).toFixed(1)}K`
-                                                : value
+                                                ? ` ${(value / 1_000).toFixed(1)}K`
+                                                : ` ${value}`
                                 }
                             />
 
-                            <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                            <Tooltip
+                                formatter={(value: number) =>
+                                    new Intl.NumberFormat('en-US', {
+                                        style: 'currency',
+                                        currency: 'MWK'
+                                    }).format(value)
+                                }
+                            />
                             <Legend />
 
-                            <Bar dataKey="totalGamingTax" fill="#ef4444" name="Gaming Tax (20%)" />
-                            <Bar dataKey="totalDETLevy" fill="#f59e0b" name="DET Levy (5%)" />
+                            <Bar dataKey="totalGamingTax" fill="#ef4444" name="Gaming Tax (12.5%)" />
+                            <Bar dataKey="totalDETLevy" fill="#f59e0b" name="DET Levy (15%)" />
                         </BarChart>
                     </ResponsiveContainer>
                 </CardContent>

@@ -95,6 +95,68 @@ export const reportsAPI = {
         return response.json();
     },
 
+    async notifyAdmins(operatorId: number) {
+        const response = await fetch(`${BASE_URL}/api/v1/notifications/report-submitted`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({ operator_id: operatorId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            console.error("Admin notification failed:", error);
+            throw new Error(error?.error || "Failed to notify admins");
+        }
+
+        return response.json();
+    },
+
+    async notifyOperators(operatorId: number) {
+        const authHeader = await getAuthHeader();
+
+        const response = await fetch(`${BASE_URL}/api/v1/notifications/report-approved`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...authHeader
+            },
+            body: JSON.stringify({ operator_id: operatorId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            console.error("Operator notification failed:", error);
+            throw new Error(error?.error || "Failed to notify operators");
+        }
+
+        return response.json();
+    },
+
+    async notifyReportRejection(operatorId: number, reason: string){
+        const authHeader = await getAuthHeader();
+
+        const response = await fetch(`${BASE_URL}/api/v1/notifications/report-rejected`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeader },
+            body: JSON.stringify({
+                operator_id: operatorId,
+                rejection_reason: reason,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            console.error("Report rejection failed:", error);
+            throw new Error(error?.error || "Failed to notify rejections");
+        }
+
+        return response.json();
+    },
+
+
     async getMyReports(operatorId: number | null) {
         if (operatorId === null) {
             throw new Error("operatorId is required");
@@ -156,7 +218,7 @@ export const reportsAPI = {
             return response.json();
         } else if (action === 'rejected') {
             const response = await fetch(`${BASE_URL}/api/v1/reports/reject/${reportId}`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: {
                     "Content-Type": "application/json",
                     ...getAuthHeader()
@@ -328,7 +390,7 @@ export const managementAPI = {
         full_name: string;
         password: string;
         operator_id: number | null;
-        role: string;
+        roles: string[];    // <-- updated
     }) {
         const authHeader = await getAuthHeader();
         const response = await fetch(`${BASE_URL}/api/v1/users/`, {

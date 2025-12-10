@@ -4,7 +4,6 @@ import { Label } from '@/components/ui/label.tsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { reportsAPI } from '@/utils/API.ts';
 import { ArrowLeft, Upload, FileSpreadsheet, Info, CheckCircle, AlertCircle } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { ReportInstructionsDialog } from './ReportInstructionsDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert.tsx';
 import type {DecodedToken} from "@/types/token.ts";
@@ -21,7 +20,6 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [showInstructions, setShowInstructions] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'validating' | 'processing' | 'success' | 'error'>('idle');
-    const currentDate = new Date();
     const [operatorId, setOperatorId] = useState<number | null>(null);
     const [uploadedBy, setUploadedBy] = useState<number | null>(null);
 
@@ -44,10 +42,6 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
 
 
 
-    const [formData, setFormData] = useState({
-        month: currentDate.getMonth() + 1,
-        year: currentDate.getFullYear(),
-    });
 
     // Show instructions dialog on component mount
     useEffect(() => {
@@ -100,15 +94,23 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
         }
 
         setIsSubmitting(true);
-        setUploadStatus('validating');
+        setUploadStatus("validating");
 
         try {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            setUploadStatus('processing');
+
+            setUploadStatus("processing");
 
             await reportsAPI.submitReport(operatorId, uploadedBy, selectedFile);
 
-            setUploadStatus('success');
+            setUploadStatus("success");
+
+            try {
+                await reportsAPI.notifyAdmins(operatorId);
+                console.log("Admin notification sent.");
+            } catch (notifyErr) {
+                console.error("Failed to notify admins:", notifyErr);
+            }
 
             await new Promise(resolve => setTimeout(resolve, 1000));
             onSubmitSuccess();
@@ -173,45 +175,6 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Period Selection */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="month">Reporting Month</Label>
-                                        <Select
-                                            value={String(formData.month)}
-                                            onValueChange={(value) => setFormData({ ...formData, month: parseInt(value) })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                                                    <SelectItem key={month} value={String(month)}>
-                                                        {new Date(2000, month - 1).toLocaleDateString('en-US', { month: 'long' })}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="year">Reporting Year</Label>
-                                        <Select
-                                            value={String(formData.year)}
-                                            onValueChange={(value) => setFormData({ ...formData, year: parseInt(value) })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i).map((year) => (
-                                                    <SelectItem key={year} value={String(year)}>
-                                                        {year}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
 
                                 {/* File Upload Area */}
                                 <div className="space-y-2">
