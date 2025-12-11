@@ -37,6 +37,7 @@ export function OperatorUserManagement() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
 
     // Operator form state
     const [operatorForm, setOperatorForm] = useState({
@@ -98,8 +99,36 @@ export function OperatorUserManagement() {
             full_name: user.full_name,
             password: '',
             operator_id: user.operator_id ? String(user.operator_id) : 'none',
-            roles: user.roles?.[0] || ['operator']
+            roles: user.roles?.length
+                ? user.roles.map((r: any) => r.name)
+                : ['operator']
         });
+    };
+
+    const closeUserDialog = () => {
+        setShowUserDialog(false);
+        setEditingUser(null);
+        setUserForm({
+            email: '',
+            full_name: '',
+            password: '',
+            operator_id: '',
+            roles: ['operator']
+        });
+    };
+
+    const openEditOperatorDialog = (operator: Operator) => {
+        setEditingOperator(operator);
+        setOperatorForm({
+            operator_name: operator.operator_name,
+            license_number: operator.license_number
+        });
+    };
+
+    const closeOperatorDialog = () => {
+        setShowOperatorDialog(false);
+        setEditingOperator(null);
+        setOperatorForm({ operator_name: '', license_number: '' });
     };
 
     const handleCreateUser = async (e: React.FormEvent) => {
@@ -136,6 +165,7 @@ export function OperatorUserManagement() {
         }
     };
 
+
     const handleToggleUserStatus = async (userId: number, currentStatus: boolean) => {
         try {
             await managementAPI.toggleUserStatus(userId, !currentStatus);
@@ -144,6 +174,91 @@ export function OperatorUserManagement() {
             setTimeout(() => setSuccess(''), 3000);
         } catch (err: any) {
             setError(err.message || 'Failed to update user status');
+        }
+    };
+
+    const handleUpdateOperator = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingOperator) return;
+
+        setError('');
+        setSuccess('');
+
+        try {
+            await managementAPI.updateOperator(editingOperator.operator_id, operatorForm);
+            setSuccess('Operator updated successfully!');
+            setOperatorForm({ operator_name: '', license_number: '' });
+            setEditingOperator(null);
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to update operator');
+        }
+    };
+
+    const handleDeleteOperator = async (operatorId: number) => {
+        if (!confirm('Are you sure you want to delete this operator? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await managementAPI.deleteOperator(operatorId);
+            setSuccess('Operator deleted successfully!');
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete operator');
+        }
+    };
+
+    const handleDeleteUser = async (userId: number) => {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await managementAPI.deleteUser(userId);
+            setSuccess('User deleted successfully!');
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete operator');
+        }
+    };
+
+    const handleUpdateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser) return;
+
+        setError('');
+        setSuccess('');
+
+        try {
+            const userData = {
+                ...userForm,
+                operator_id:
+                    userForm.operator_id && userForm.operator_id !== 'none'
+                        ? parseInt(userForm.operator_id)
+                        : null
+            };
+
+            await managementAPI.updateUser(editingUser.user_id, userData);
+
+            setSuccess('User updated successfully!');
+
+            setUserForm({
+                email: '',
+                full_name: '',
+                password: '',
+                operator_id: '',
+                roles: ['operator']
+            });
+
+            setEditingUser(null);
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to update user');
         }
     };
 
@@ -269,16 +384,22 @@ export function OperatorUserManagement() {
                                             <Badge variant="outline">{operator.license_number}</Badge>
                                         </td>
                                         <td className="py-3 px-4">
-                        <span className="text-sm text-gray-600">
-                          {users.filter(u => u.operator_id === operator.operator_id).length} users
-                        </span>
+                                            <span className="text-sm text-gray-600">
+                                              {users.filter(u => u.operator_id === operator.operator_id).length} users
+                                            </span>
                                         </td>
                                         <td className="py-3 px-4">
                                             <div className="flex gap-2">
-                                                <Button variant="ghost" size="sm">
+                                                <Button
+                                                    variant="ghost" size="sm"
+                                                    onClick={() => openEditOperatorDialog(operator)}
+                                                >
                                                     <Edit className="size-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="sm">
+                                                <Button
+                                                    variant="ghost" size="sm"
+                                                    onClick={() => handleDeleteOperator(operator.operator_id)}
+                                                >
                                                     <Trash2 className="size-4 text-red-600" />
                                                 </Button>
                                             </div>
@@ -385,13 +506,10 @@ export function OperatorUserManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleToggleUserStatus(user.user_id, user.is_active)}
+                                                        className="text-red-600 hover:text-red-700"
+                                                        onClick={() => handleDeleteUser(user.user_id)}
                                                     >
-                                                        {user.is_active ? (
-                                                            <XCircle className="size-4 text-orange-600" />
-                                                        ) : (
-                                                            <CheckCircle className="size-4 text-green-600" />
-                                                        )}
+                                                        <Trash2 className="size-4" />
                                                     </Button>
                                                     <Button variant="ghost" size="sm" onClick={() => openEditUserDialog(user)}>
                                                         <Edit className="size-4" />
@@ -409,18 +527,21 @@ export function OperatorUserManagement() {
             </Card>
 
             {/* Add Operator Dialog */}
-            <Dialog open={showOperatorDialog} onOpenChange={setShowOperatorDialog}>
+            <Dialog open={showOperatorDialog || !!editingOperator} onOpenChange={(open) => !open && closeOperatorDialog()}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Building2 className="size-5 text-indigo-600" />
-                            Add New Operator
+                            {editingOperator ? 'Edit Operator' : 'Add New Operator'}
                         </DialogTitle>
                         <DialogDescription>
-                            Create a new gaming operator with license information
+                            {editingOperator
+                                ? 'Update operator information and license details'
+                                : 'Create a new gaming operator with license information'
+                            }
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleCreateOperator} className="space-y-4">
+                    <form onSubmit={editingOperator ? handleUpdateOperator : handleCreateOperator} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="operator_name">Operator Name</Label>
                             <Input
@@ -442,31 +563,44 @@ export function OperatorUserManagement() {
                             />
                         </div>
                         <div className="flex gap-3 justify-end pt-4 border-t">
-                            <Button type="button" variant="outline" onClick={() => setShowOperatorDialog(false)}>
+                            <Button type="button" variant="outline" onClick={closeOperatorDialog}>
                                 Cancel
                             </Button>
                             <Button type="submit">
-                                <Plus className="size-4 mr-2" />
-                                Create Operator
+                                {editingOperator ? (
+                                    <>
+                                        <Edit className="size-4 mr-2" />
+                                        Update Operator
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="size-4 mr-2" />
+                                        Create Operator
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </form>
                 </DialogContent>
             </Dialog>
 
+
             {/* Add User Dialog */}
-            <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
+            <Dialog open={showUserDialog || !!editingUser} onOpenChange={(open) => !open && closeUserDialog()}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <UserPlus className="size-5 text-green-600" />
-                            Add New User
+                            {editingUser ? 'Edit User' : 'Add New User'}
                         </DialogTitle>
                         <DialogDescription>
-                            Create a new user account and assign to an operator
+                            {editingUser
+                                ? 'Update user account details and permissions'
+                                : 'Create a new user account and assign to an operator'
+                            }
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleCreateUser} className="space-y-4">
+                    <form onSubmit={editingUser ? handleUpdateUser : handleCreateUser} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email Address</Label>
@@ -491,14 +625,16 @@ export function OperatorUserManagement() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">
+                                Password {editingUser && <span className="text-xs text-gray-500">(leave blank to keep current)</span>}
+                            </Label>
                             <Input
                                 id="password"
                                 type="password"
                                 placeholder="••••••••"
                                 value={userForm.password}
                                 onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                                required
+                                required={!editingUser}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -529,11 +665,11 @@ export function OperatorUserManagement() {
                             <div className="space-y-2">
                                 <Label htmlFor="role">Role</Label>
                                 <Select
-                                    value={userForm.role}
-                                    onValueChange={(value) => setUserForm({ ...userForm, role: value })}
+                                    value={userForm.roles[0]}
+                                    onValueChange={(value) => setUserForm({ ...userForm, roles: [value] })}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue />
+                                        <SelectValue placeholder="Select a role" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="admin">Administrator</SelectItem>
@@ -543,12 +679,21 @@ export function OperatorUserManagement() {
                             </div>
                         </div>
                         <div className="flex gap-3 justify-end pt-4 border-t">
-                            <Button type="button" variant="outline" onClick={() => setShowUserDialog(false)}>
+                            <Button type="button" variant="outline" onClick={closeUserDialog}>
                                 Cancel
                             </Button>
                             <Button type="submit">
-                                <Plus className="size-4 mr-2" />
-                                Create User
+                                {editingUser ? (
+                                    <>
+                                        <Edit className="size-4 mr-2" />
+                                        Update User
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="size-4 mr-2" />
+                                        Create User
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </form>

@@ -368,6 +368,84 @@ export const managementAPI = {
         return response.json();
     },
 
+    async updateUser(userId: number, userData: {
+        email: string;
+        full_name: string;
+        password?: string;
+        operator_id: number | null;
+        roles: string[];
+    }) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
+            },
+            body: JSON.stringify(userData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Updating user failed:', error);
+            throw new Error(error.error || 'Failed to update user');
+        }
+
+        return response.json();
+    },
+
+    async deleteUser(userId: number) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/users/${userId}`, {
+            method: 'DELETE',
+            headers: authHeader
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Deleting user failed:', error);
+            throw new Error(error.error || 'Failed to delete user');
+        }
+
+        return response.json();
+    },
+
+    async updateOperator(operatorId: number, operatorData: { operator_name: string; license_number: string }) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/operators/${operatorId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
+            },
+            body: JSON.stringify(operatorData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Updating operator failed:', error);
+            throw new Error(error.error || 'Failed to update operator');
+        }
+
+        return response.json();
+    },
+
+    async deleteOperator(operatorId: number) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/operators/${operatorId}`, {
+            method: 'DELETE',
+            headers: authHeader
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Deleting operator failed:', error);
+            throw new Error(error.error || 'Failed to delete operator');
+        }
+
+        return response.json();
+    },
+
     async getUsers() {
         const authHeader = await getAuthHeader();
         const response = await fetch(`${BASE_URL}/api/v1/users`, {
