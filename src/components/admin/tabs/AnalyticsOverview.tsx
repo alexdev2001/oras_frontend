@@ -205,7 +205,10 @@ export function AnalyticsOverview({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl">
-                            MWK {Number(latestMonth?.totalGamingTax || 0).toLocaleString()}
+                            MWK {Number(latestMonth?.totalGamingTax || 0).toLocaleString('en-MW', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                        })}
                         </div>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
                             <Activity className="size-4" />
@@ -221,7 +224,10 @@ export function AnalyticsOverview({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl">
-                            MWK {safeLocale(latestMonth.totalDETLevy)}
+                            MWK {Number(latestMonth?.totalDETLevy || 0).toLocaleString("en-MW", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                        })}
                         </div>
                         <div className="flex items-center gap-1 mt-2 text-gray-500 text-sm">
                             <BarChart2 className="size-4" />

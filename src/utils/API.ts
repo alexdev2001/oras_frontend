@@ -153,7 +153,6 @@ export const reportsAPI = {
             throw new Error(error?.error || "Failed to notify rejections");
         }
 
-        return response.json();
     },
 
 
@@ -504,6 +503,79 @@ export const managementAPI = {
             const error = await response.json();
             console.error('Updating user status failed:', error);
             throw new Error(error.error || 'Failed to update user status');
+        }
+
+        return response.json();
+    },
+
+    async getRegulators() {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/regulators`, {
+            method: 'GET',
+            headers: authHeader
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Fetching regulators failed:', error);
+            throw new Error(error.error || 'Failed to fetch regulators');
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    },
+
+    async createRegulator(regulatorData: { regulator_name: string; country: string }) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/regulators`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
+            },
+            body: JSON.stringify(regulatorData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Creating regulator failed:', error);
+            throw new Error(error.error || 'Failed to create regulator');
+        }
+
+        return response.json();
+    },
+
+    async updateRegulator(regulatorId: number, regulatorData: { regulator_name: string; country: string }) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/management/regulators/${regulatorId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
+            },
+            body: JSON.stringify(regulatorData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Updating regulator failed:', error);
+            throw new Error(error.error || 'Failed to update regulator');
+        }
+
+        return response.json();
+    },
+
+    async deleteRegulator(regulatorId: number) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/management/regulators/${regulatorId}`, {
+            method: 'DELETE',
+            headers: authHeader
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Deleting regulator failed:', error);
+            throw new Error(error.error || 'Failed to delete regulator');
         }
 
         return response.json();

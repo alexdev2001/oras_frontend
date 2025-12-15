@@ -5,10 +5,11 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Badge } from '../../ui/badge';
-import { Building2, UserPlus, Plus, Mail, Shield, Calendar, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react';
+import { Globe, Building2, UserPlus, Plus, Mail, Shield, Calendar, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { managementAPI } from "@/utils/API.ts";
+import type {Regulator} from "@/types/regulator.ts";
 
 export interface Operator {
     operator_id: number;
@@ -38,11 +39,19 @@ export function OperatorUserManagement() {
     const [success, setSuccess] = useState('');
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
+    const [regulators, setRegulators] = useState<Regulator[]>([]);
+    const [showRegulatorDialog, setShowRegulatorDialog] = useState(false);
+    const [editingRegulator, setEditingRegulator] = useState<Regulator | null>(null);
 
     // Operator form state
     const [operatorForm, setOperatorForm] = useState({
         operator_name: '',
         license_number: ''
+    });
+
+    const [regulatorForm, setRegulatorForm] = useState({
+        regulator_name: '',
+        country: ''
     });
 
     // User form state
@@ -61,12 +70,14 @@ export function OperatorUserManagement() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [operatorsData, usersData] = await Promise.all([
+            const [operatorsData, usersData, regulatorsData] = await Promise.all([
                 managementAPI.getOperators(),
-                managementAPI.getUsers()
+                managementAPI.getUsers(),
+                managementAPI.getRegulators()
             ]);
             setOperators((operatorsData || []).filter(op => op && op.operator_id));
             setUsers((usersData || []).filter(u => u && u.user_id));
+            setRegulators((regulatorsData || []).filter(r => r && r.regulator_id));
         } catch (err: any) {
             console.error('Failed to load data:', err);
             setError(err.message || 'Failed to load data');
@@ -196,6 +207,57 @@ export function OperatorUserManagement() {
         }
     };
 
+    const handleCreateRegulator = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+
+        try {
+            await managementAPI.createRegulator(regulatorForm);
+            setSuccess('Regulator created successfully!');
+            setRegulatorForm({ regulator_name: '', country: '' });
+            setShowRegulatorDialog(false);
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to create regulator');
+        }
+    };
+
+    const handleUpdateRegulator = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingRegulator) return;
+
+        setError('');
+        setSuccess('');
+
+        try {
+            await managementAPI.updateRegulator(editingRegulator.regulator_id, regulatorForm);
+            setSuccess('Regulator updated successfully!');
+            setEditingRegulator(null);
+            setShowRegulatorDialog(false);
+            setRegulatorForm({ regulator_name: '', country: '' });
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to update regulator');
+        }
+    };
+
+    const openRegulatorDialog = (regulator?: Regulator) => {
+        if (regulator) {
+            setEditingRegulator(regulator);
+            setRegulatorForm({
+                regulator_name: regulator.regulator_name,
+                country: regulator.country
+            });
+        } else {
+            setEditingRegulator(null);
+            setRegulatorForm({ regulator_name: '', country: '' });
+        }
+        setShowRegulatorDialog(true);
+    };
+
     const handleDeleteOperator = async (operatorId: number) => {
         if (!confirm('Are you sure you want to delete this operator? This action cannot be undone.')) {
             return;
@@ -321,18 +383,91 @@ export function OperatorUserManagement() {
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600">Active Users</p>
+                                <p className="text-sm text-gray-600">Total Regulators</p>
                                 <p className="text-3xl font-semibold mt-1">
-                                    {users.filter(u => u.is_active).length}
+                                    {regulators.length}
                                 </p>
                             </div>
-                            <div className="size-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <CheckCircle className="size-6 text-blue-600" />
+
+                            <div className="size-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <Globe className="size-6 text-yellow-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/*Regulators section*/}
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <Globe className="size-5 text-indigo-600" />
+                                Regulators
+                            </CardTitle>
+                            <CardDescription>Manage regulatory bodies and their information</CardDescription>
+                        </div>
+                        <Button onClick={() => openRegulatorDialog()}>
+                            <Plus className="size-4 mr-2" />
+                            Add Regulator
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {regulators.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            <Globe className="size-12 mx-auto mb-4 text-gray-400" />
+                            <p className="mb-4">No regulators found</p>
+                            <Button onClick={() => openRegulatorDialog()}>
+                                <Plus className="size-4 mr-2" />
+                                Add Your First Regulator
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {regulators.map((regulator) => (
+                                <div
+                                    key={regulator.regulator_id}
+                                    className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Globe className="size-5 text-indigo-600" />
+                                                <h3 className="font-medium">{regulator.regulator_name}</h3>
+                                                <Badge variant="outline">{regulator.country}</Badge>
+                                            </div>
+                                            <div className="text-sm text-gray-600">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar className="size-4" />
+                                                    <span>Created {regulator.created_at ? new Date(regulator.created_at).toLocaleDateString() : 'N/A'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                // onClick={() => openRegulatorDialog(regulator)}
+                                            >
+                                                <Edit className="size-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                // onClick={() => handleDeleteRegulator(regulator.regulator_id)}
+                                            >
+                                                <Trash2 className="size-4 text-red-600" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Operators Section */}
             <Card>
@@ -525,6 +660,56 @@ export function OperatorUserManagement() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Regulator Dialog */}
+            <Dialog open={showRegulatorDialog} onOpenChange={setShowRegulatorDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingRegulator ? 'Edit Regulator' : 'Add New Regulator'}</DialogTitle>
+                        <DialogDescription>
+                            {editingRegulator ? 'Update regulator information' : 'Create a new regulatory body'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={editingRegulator ? handleUpdateRegulator : handleCreateRegulator} className="space-y-4">
+                        <div>
+                            <Label htmlFor="regulator_name">Regulator Name *</Label>
+                            <Input
+                                id="regulator_name"
+                                value={regulatorForm.regulator_name}
+                                onChange={(e) => setRegulatorForm({ ...regulatorForm, regulator_name: e.target.value })}
+                                placeholder="e.g., Gaming Control Board"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="country">Country of Origin *</Label>
+                            <Input
+                                id="country"
+                                value={regulatorForm.country}
+                                onChange={(e) => setRegulatorForm({ ...regulatorForm, country: e.target.value })}
+                                placeholder="e.g., United States"
+                                required
+                            />
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                            <Button type="submit">
+                                {editingRegulator ? 'Update Regulator' : 'Create Regulator'}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setShowRegulatorDialog(false);
+                                    setEditingRegulator(null);
+                                    setRegulatorForm({ regulator_name: '', country: '' });
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             {/* Add Operator Dialog */}
             <Dialog open={showOperatorDialog || !!editingOperator} onOpenChange={(open) => !open && closeOperatorDialog()}>

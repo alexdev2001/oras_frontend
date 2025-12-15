@@ -26,8 +26,20 @@ export interface ParsedMetric {
     ggr: number;
     ngr_post_levy: number;
     created_at: string;
+    date_time: string;
     status: "approved" | "unapproved" | "rejected";
 }
+
+export type TransformedReport = ParsedMetric & {
+    year: number;
+    month: number;
+    submittedAt: string;
+    totalStake: number;
+    totalGGR: number;
+    overallGGRPercentage: number;
+    totalNetRevenue: number;
+    gameBreakdown: any[];
+};
 
 export interface GameBreakdown {
     gameType: string;
