@@ -5,6 +5,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard.tsx';
 import { authAPI } from '@/utils/API.ts';
 import { jwtDecode } from "jwt-decode";
 import type {DecodedToken} from "@/types/token.ts";
+import {RegulatorDashboard} from "@/components/regulator/RegulatorDashboard.tsx";
 
 export default function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -75,6 +76,10 @@ export default function App() {
 
     if (userRole === 'admin') {
         return <AdminDashboard onSignOut={handleSignOut} />;
+    }
+
+    if (userRole === 'regulator') {
+        return <RegulatorDashboard onSignOut={handleSignOut} />;
     }
 
     return <OperatorDashboard onSignOut={handleSignOut} />;

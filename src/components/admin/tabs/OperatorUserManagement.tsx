@@ -25,6 +25,7 @@ interface User {
     is_active: boolean;
     created_at: string;
     operator_id?: number;
+    regulator_id?: number;
     operator?: Operator;
     roles?: string[];
 }
@@ -60,6 +61,7 @@ export function OperatorUserManagement() {
         full_name: '',
         password: '',
         operator_id: '',
+        regulator_id: '',
         roles: ['operator']
     });
 
@@ -110,6 +112,7 @@ export function OperatorUserManagement() {
             full_name: user.full_name,
             password: '',
             operator_id: user.operator_id ? String(user.operator_id) : 'none',
+            regulator_id: user ? String(user.operator_id) : 'none',
             roles: user.roles?.length
                 ? user.roles.map((r: any) => r.name)
                 : ['operator']
@@ -124,6 +127,7 @@ export function OperatorUserManagement() {
             full_name: '',
             password: '',
             operator_id: '',
+            regulator_id: '',
             roles: ['operator']
         });
     };
@@ -153,6 +157,7 @@ export function OperatorUserManagement() {
                 full_name: userForm.full_name,
                 password: userForm.password,
                 operator_id: userForm.operator_id ? parseInt(userForm.operator_id) : null,
+                regulator_id: userForm.regulator_id ? parseInt(userForm.regulator_id) : null,
                 roles: userForm.roles
             };
 
@@ -164,6 +169,7 @@ export function OperatorUserManagement() {
                 full_name: '',
                 password: '',
                 operator_id: '',
+                regulator_id: '',
                 roles: ['operator']
             });
 
@@ -313,6 +319,7 @@ export function OperatorUserManagement() {
                 full_name: '',
                 password: '',
                 operator_id: '',
+                regulator_id: '',
                 roles: ['operator']
             });
 
@@ -771,66 +778,114 @@ export function OperatorUserManagement() {
 
 
             {/* Add User Dialog */}
-            <Dialog open={showUserDialog || !!editingUser} onOpenChange={(open) => !open && closeUserDialog()}>
+            {/* User Dialog */}
+            <Dialog
+                open={showUserDialog || !!editingUser}
+                onOpenChange={(open) => !open && closeUserDialog()}
+            >
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <UserPlus className="size-5 text-green-600" />
+                            <UserPlus className="size-5 text-indigo-600" />
                             {editingUser ? 'Edit User' : 'Add New User'}
                         </DialogTitle>
                         <DialogDescription>
                             {editingUser
-                                ? 'Update user account details and permissions'
-                                : 'Create a new user account and assign to an operator'
-                            }
+                                ? 'Update user account details and assignments'
+                                : 'Create a new user account and assign regulator/operator'}
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={editingUser ? handleUpdateUser : handleCreateUser} className="space-y-4">
+
+                    <form
+                        onSubmit={editingUser ? handleUpdateUser : handleCreateUser}
+                        className="space-y-4"
+                    >
+                        {/* Email + Full Name */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email Address</Label>
+                                <Label htmlFor="email">Email *</Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="user@example.com"
                                     value={userForm.email}
-                                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                                    onChange={(e) =>
+                                        setUserForm({ ...userForm, email: e.target.value })
+                                    }
                                     required
                                 />
                             </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="full_name">Full Name</Label>
+                                <Label htmlFor="full_name">Full Name *</Label>
                                 <Input
                                     id="full_name"
                                     placeholder="John Doe"
                                     value={userForm.full_name}
-                                    onChange={(e) => setUserForm({ ...userForm, full_name: e.target.value })}
+                                    onChange={(e) =>
+                                        setUserForm({ ...userForm, full_name: e.target.value })
+                                    }
                                     required
                                 />
                             </div>
                         </div>
+
+                        {/* Password */}
                         <div className="space-y-2">
                             <Label htmlFor="password">
-                                Password {editingUser && <span className="text-xs text-gray-500">(leave blank to keep current)</span>}
+                                Password{' '}
+                                {editingUser && (
+                                    <span className="text-xs text-gray-500">
+              (leave blank to keep current)
+            </span>
+                                )}
                             </Label>
                             <Input
                                 id="password"
                                 type="password"
                                 placeholder="••••••••"
                                 value={userForm.password}
-                                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                                onChange={(e) =>
+                                    setUserForm({ ...userForm, password: e.target.value })
+                                }
                                 required={!editingUser}
                             />
                         </div>
+
+                        {/* Regulator + Operator */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="operator_select">Assign to Operator</Label>
+                                <Label htmlFor="regulator_id">Regulator *</Label>
                                 <Select
-                                    value={userForm.operator_id}
+                                    value={userForm.regulator_id}
+                                    onValueChange={(value) =>
+                                        setUserForm({ ...userForm, regulator_id: value })
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select regulator..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {regulators.map((reg) => (
+                                            <SelectItem
+                                                key={reg.regulator_id}
+                                                value={String(reg.regulator_id)}
+                                            >
+                                                {reg.regulator_name} ({reg.country})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="operator_id">Assign Operator</Label>
+                                <Select
+                                    value={userForm.operator_id ?? 'none'}
                                     onValueChange={(value) =>
                                         setUserForm({
                                             ...userForm,
-                                            operator_id: value === "none" ? null : value
+                                            operator_id: value === 'none' ? null : value,
                                         })
                                     }
                                 >
@@ -840,30 +895,40 @@ export function OperatorUserManagement() {
                                     <SelectContent>
                                         <SelectItem value="none">No operator (Admin)</SelectItem>
                                         {operators.map((op) => (
-                                            <SelectItem key={op.operator_id} value={String(op.operator_id)}>
+                                            <SelectItem
+                                                key={op.operator_id}
+                                                value={String(op.operator_id)}
+                                            >
                                                 {op.operator_name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="role">Role</Label>
-                                <Select
-                                    value={userForm.roles[0]}
-                                    onValueChange={(value) => setUserForm({ ...userForm, roles: [value] })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a role" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="admin">Administrator</SelectItem>
-                                        <SelectItem value="operator">Operator</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
                         </div>
-                        <div className="flex gap-3 justify-end pt-4 border-t">
+
+                        {/* Role */}
+                        <div className="space-y-2">
+                            <Label htmlFor="role">Role</Label>
+                            <Select
+                                value={userForm.roles[0]}
+                                onValueChange={(value) =>
+                                    setUserForm({ ...userForm, roles: [value] })
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="admin">Administrator</SelectItem>
+                                    <SelectItem value="operator">Operator</SelectItem>
+                                    <SelectItem value="regulator">Regulator</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-3 pt-4 border-t">
                             <Button type="button" variant="outline" onClick={closeUserDialog}>
                                 Cancel
                             </Button>

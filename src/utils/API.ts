@@ -273,7 +273,45 @@ export const reportsAPI = {
         }
 
         return response.blob();
-    }
+    },
+
+    async submitMetrics(month: string, submissionType: 'online' | 'offline', file: File) {
+        if (!file) {
+            throw new Error('File object is missing.');
+        }
+
+        // 1. Create FormData object for multipart submission
+        const formData = new FormData();
+
+        // Append fields, ensuring names match FastAPI arguments
+        formData.append('month_year', month);
+        formData.append('report_type_status', submissionType);
+        formData.append('file', file);
+
+        // 2. Perform the fetch request
+        const response = await fetch(`${BASE_URL}/api/v1/regulators/submit_metrics`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeader(),
+            },
+            body: formData,
+        });
+
+        // 3. Handle response and errors
+        if (!response.ok) {
+            const errorData = await response.json();
+            let detail = 'Unknown submission error.';
+            if (errorData.detail) {
+                detail = typeof errorData.detail === 'string'
+                    ? errorData.detail
+                    : 'Check server logs or response JSON for details.';
+            }
+
+            throw new Error(`Submission failed: ${detail}`);
+        }
+
+        return response.json();
+    },
 };
 
 // Analytics API
@@ -467,7 +505,8 @@ export const managementAPI = {
         full_name: string;
         password: string;
         operator_id: number | null;
-        roles: string[];    // <-- updated
+        regulator_id: number | null;
+        roles: string[];
     }) {
         const authHeader = await getAuthHeader();
         const response = await fetch(`${BASE_URL}/api/v1/users/`, {
