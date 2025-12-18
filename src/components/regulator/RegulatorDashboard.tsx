@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input.tsx';
 import { Label } from '@/components/ui/label.tsx';
 import { Textarea } from '@/components/ui/textarea.tsx';
+import {jwtDecode} from "jwt-decode";
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -90,11 +91,33 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         }
 
         setIsSubmitting(true);
+
         try {
+            // 1. Get token from local storage
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error('User not authenticated.');
+
+            // 2. Decode token to get regulator_id
+            interface DecodedJWT {
+                user_id: number;
+                email_notification: string;
+                operator_id: number | null;
+                regulator_id: number;
+                roles: string[];
+                exp: number;
+                iat: number;
+            }
+
+            const decoded = jwtDecode<DecodedJWT>(token);
+            const regulatorId = decoded.regulator_id;
+            if (!regulatorId) throw new Error('Regulator ID missing in token.');
+
+            // 3. Call API with regulator_id
             await reportsAPI.submitMetrics(
                 month,
                 submissionType,
-                file
+                file,
+                regulatorId
             );
 
             alert(`Report for ${month} (${submissionType}) submitted successfully!`);

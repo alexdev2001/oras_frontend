@@ -1,10 +1,22 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button.tsx";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select.tsx";
-import { Label } from "@/components/ui/label.tsx";
-import { managementAPI } from "@/utils/API.ts";
+import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { managementAPI, reportsAPI } from "@/utils/API";
 
-export function MonthlySummaryGenerator() {
+interface Props {
+    mode?: "operator" | "regulator";
+}
+
+export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
+    const isRegulator = mode === "regulator";
+
     const [selectedMonth, setSelectedMonth] = useState<string>("");
     const [loading, setLoading] = useState(false);
 
@@ -24,68 +36,90 @@ export function MonthlySummaryGenerator() {
     ];
 
     const handleGenerate = async () => {
-        if (!selectedMonth) {
-            alert("Please select a month first");
-            return;
-        }
-
         try {
             setLoading(true);
 
-            const response = await managementAPI.generateMonthlySummary(selectedMonth);
+            if (isRegulator) {
+                const blob = await reportsAPI.downloadRegulatorExcel();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "Regulator_Report_Latest_Year.xlsx";
+                link.click();
+                URL.revokeObjectURL(url);
+            } else {
+                if (!selectedMonth) return;
 
-            if (!response || !response.content) {
-                throw new Error("Backend did not return PDF content");
+                const response = await managementAPI.generateMonthlySummary(selectedMonth);
+                const hex = response.content.replace(/[^0-9a-f]/gi, "");
+                const byteArray = new Uint8Array(
+                    hex.match(/.{1,2}/g)!.map((b: string) => parseInt(b, 16))
+                );
+
+                const blob = new Blob([byteArray], { type: "application/pdf" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = response.filename || "summary.pdf";
+                link.click();
+                URL.revokeObjectURL(url);
             }
-
-            const hex = response.content.replace(/[^0-9a-f]/gi, "");
-            const byteArray = new Uint8Array(
-                hex.match(/.{1,2}/g).map((b: string) => parseInt(b, 16))
-            );
-
-            const blob = new Blob([byteArray], { type: "application/pdf" });
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = response.filename || "summary.pdf";
-            link.click();
-
-            URL.revokeObjectURL(url);
-
-        } catch (err: any) {
-            console.error("Failed to download summary PDF:", err);
-            alert("Failed to generate summary report");
+        } catch {
+            alert(`Failed to generate ${isRegulator ? "Excel" : "PDF"}`);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="mb-6 bg-white border rounded-lg p-4 flex items-end gap-4">
-            {/* Dropdown with label */}
-            <div className="flex flex-col">
-                <Label htmlFor="month-select" className="text-sm font-medium">Select Month:</Label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger id="month-select" className="w-48">
-                        <SelectValue placeholder="Choose a month..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {months.map((month) => (
-                            <SelectItem key={month.value} value={month.value}>
-                                {month.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <div
+            className={`
+                mb-6 rounded-lg border bg-white p-4
+                flex items-end gap-6
+                ${isRegulator ? "border-blue-200" : "border-gray-200"}
+            `}
+        >
+            {/* Control column */}
+            <div className="flex flex-col w-64">
+                <Label className="text-sm font-medium mb-1 text-gray-700">
+                    {isRegulator
+                        ? "Regulator: Annual Metrics (Excel)"
+                        : "Operator: Monthly Summary (PDF)"}
+                </Label>
+
+                {/* Keep height consistent */}
+                {isRegulator ? (
+                    <div className="h-10 rounded-md border bg-gray-50 flex items-center px-3 text-sm text-gray-500">
+                        Latest available year
+                    </div>
+                ) : (
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose a month..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {months.map((m) => (
+                                <SelectItem key={m.value} value={m.value}>
+                                    {m.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             </div>
 
-            {/* Inline button */}
+            {/* Action button */}
             <Button
                 onClick={handleGenerate}
-                disabled={loading || !selectedMonth}
+                disabled={loading || (!isRegulator && !selectedMonth)}
+                className={`
+                    h-10 px-6
+                    ${isRegulator ? "bg-blue-600 hover:bg-blue-700" : ""}
+                `}
             >
-                {loading ? "Generating..." : "Generate Summary"}
+                {loading
+                    ? "Processing..."
+                    : `Generate ${isRegulator ? "Excel" : "Summary"}`}
             </Button>
         </div>
     );

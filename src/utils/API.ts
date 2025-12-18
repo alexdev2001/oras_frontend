@@ -135,6 +135,26 @@ export const reportsAPI = {
         return response.json();
     },
 
+    async downloadRegulatorExcel() {
+        const response = await fetch(
+            `${BASE_URL}/api/v1/regulator-report-summary`,
+            {
+                method: "GET",
+                headers: {
+                    ...getAuthHeader(),
+                    Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Failed to download Excel report");
+        }
+
+        return await response.blob();
+    },
+
     async notifyReportRejection(operatorId: number, reason: string){
         const authHeader = await getAuthHeader();
 
@@ -155,6 +175,19 @@ export const reportsAPI = {
 
     },
 
+    async getRegulatorMetrics() {
+        const response = await fetch(`${BASE_URL}/api/v1/regulator-metrics`, {
+            method: 'GET',
+            headers: getAuthHeader()
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => null);
+            throw new Error(error?.error || "Failed to notify regulator metrics");
+        }
+
+        return response.json();
+    },
 
     async getMyReports(operatorId: number | null) {
         if (operatorId === null) {
@@ -229,6 +262,13 @@ export const reportsAPI = {
         }
     },
 
+    async  fetchRegulatorName(regulatorId: number): Promise<string> {
+        const res = await fetch(`${BASE_URL}/api/v1/regulators/${regulatorId}`);
+        if (!res.ok) throw new Error("Failed to fetch regulator");
+        const data = await res.json();
+        return data.regulator_name;
+    },
+
     async compareWithEMS(reportId: string, emsData: any) {
         const response = await fetch(`${BASE_URL}/reports/compare-ems`, {
             method: 'POST',
@@ -275,20 +315,20 @@ export const reportsAPI = {
         return response.blob();
     },
 
-    async submitMetrics(month: string, submissionType: 'online' | 'offline', file: File) {
-        if (!file) {
-            throw new Error('File object is missing.');
-        }
+    async submitMetrics(
+        month: string,
+        submissionType: 'online' | 'offline',
+        file: File,
+        regulatorId: number
+    ) {
+        if (!file) throw new Error('File object is missing.');
 
-        // 1. Create FormData object for multipart submission
         const formData = new FormData();
-
-        // Append fields, ensuring names match FastAPI arguments
         formData.append('month_year', month);
         formData.append('report_type_status', submissionType);
         formData.append('file', file);
+        formData.append('regulator_id', regulatorId.toString()); // Add regulator_id here
 
-        // 2. Perform the fetch request
         const response = await fetch(`${BASE_URL}/api/v1/regulators/submit_metrics`, {
             method: 'POST',
             headers: {
@@ -297,7 +337,6 @@ export const reportsAPI = {
             body: formData,
         });
 
-        // 3. Handle response and errors
         if (!response.ok) {
             const errorData = await response.json();
             let detail = 'Unknown submission error.';
@@ -312,6 +351,19 @@ export const reportsAPI = {
 
         return response.json();
     },
+
+    async getRegulatorReports() {
+        const response = await fetch(`${BASE_URL}/api/v1/regulator-report`, {
+            method: 'GET',
+            headers: {
+                "Content-Type": "application/json",
+            }
+        });
+        if (!response.ok) {
+            console.error("failed to fetch regulator reports");
+        }
+        return response.json();
+    }
 };
 
 // Analytics API
