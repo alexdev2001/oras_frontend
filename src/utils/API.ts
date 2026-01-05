@@ -483,6 +483,22 @@ export const managementAPI = {
         return response.json();
     },
 
+    async getRegulatorUsers(regulatorId: number) {
+        const authHeader = await getAuthHeader();
+        const response = await fetch(`${BASE_URL}/api/v1/users/regulator/${regulatorId}`, {
+            method: 'GET',
+            headers: authHeader
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Getting users failed:', error);
+            throw new Error(error.error || 'Failed to update user');
+        }
+
+        return response.json();
+    },
+
     async deleteUser(userId: number) {
         const authHeader = await getAuthHeader();
         const response = await fetch(`${BASE_URL}/api/v1/users/${userId}`, {

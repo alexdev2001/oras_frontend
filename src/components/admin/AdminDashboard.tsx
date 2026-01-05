@@ -32,8 +32,9 @@ const operatorTabs = [
 
 const regulatorTabs = [
     { value: 'dashboard', label: 'Dashboard', icon: Building2 },
-    { value: 'submitted', label: 'Submitted Reports', icon: FileCheck },
     { value: 'metrics', label: 'Metrics', icon: BarChart3 },
+    { value: 'users', label: 'User Management', icon: Users },
+
 ];
 
 export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
@@ -115,10 +116,10 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         switch (value) {
             case 'dashboard':
                 return <RegulatorMain/>;
-            case 'submitted':
-                return <div>Submitted Reports Content</div>;
             case 'metrics':
                 return <MetricsTab metrics={mockMetrics}/>;
+            case 'users':
+                return <OperatorUserManagement/>
             default:
                 return null;
         }

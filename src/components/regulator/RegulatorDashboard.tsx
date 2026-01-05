@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button.tsx';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
-import {authAPI, reportsAPI} from '@/utils/API.ts';
-import { Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge.tsx';
-import { motion, AnimatePresence } from 'motion/react';
-import { Input } from '@/components/ui/input.tsx';
-import { Label } from '@/components/ui/label.tsx';
-import { Textarea } from '@/components/ui/textarea.tsx';
-import {jwtDecode} from "jwt-decode";
+import { authAPI, managementAPI } from '@/utils/API.ts';
+import { Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { motion } from 'motion/react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { KpiCard } from './KpiCard.tsx';
+import { ReportInstructionsDialog } from './ReportInstructionDialog.tsx';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -27,23 +27,38 @@ interface RegulatorSubmission {
     reviewNotes?: string;
 }
 
+interface UserRole {
+    role_id: number;
+    name: string;
+}
+
+interface UniqueRegulatorUser {
+    user_id: string;
+    email: string;
+    full_name: string | null;
+    is_active: boolean;
+    roles?: UserRole[];
+    operator_id: number | null;
+    regulator_id: number;
+}
+
 export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+    const [showInstructions, setShowInstructions] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [uniqueOperators, setUniqueOperators] = useState<UniqueRegulatorUser[]>([]);
 
     // Form state
     const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const [month, setMonth] = useState('')
-    const [submissionType, setSubmissionType] =
-        useState<'online' | 'offline'>('online');
+    const [month, setMonth] = useState('');
+    const [submissionType, setSubmissionType] = useState<'online' | 'offline'>('online');
 
     useEffect(() => {
-        // loadUser();
         loadSubmissions();
+        loadUniqueOperators();
     }, []);
 
     // const loadUser = async () => {
@@ -54,6 +69,23 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     //         console.error('Failed to load user:', error);
     //     }
     // };
+
+    async function loadUniqueOperators() {
+        try {
+            // Get all users and filter for operators associated with this regulator
+            const users = await managementAPI.getUsers();
+
+            // Filter users who have regulator role and same regulator_id
+            const regulatorUsers = users.filter((u: any) =>
+                u.roles?.includes('regulator') || u.roles?.some((r: any) => r.name === 'regulator')
+            );
+
+            setUniqueOperators(regulatorUsers as UniqueRegulatorUser[]);
+        } catch (error) {
+            console.error('Failed to load regulator users:', error);
+            setUniqueOperators([]);
+        }
+    }
 
     const loadSubmissions = async () => {
         setIsLoading(true);
@@ -93,39 +125,12 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         setIsSubmitting(true);
 
         try {
-            // 1. Get token from local storage
-            const token = localStorage.getItem('authToken');
-            if (!token) throw new Error('User not authenticated.');
-
-            // 2. Decode token to get regulator_id
-            interface DecodedJWT {
-                user_id: number;
-                email_notification: string;
-                operator_id: number | null;
-                regulator_id: number;
-                roles: string[];
-                exp: number;
-                iat: number;
-            }
-
-            const decoded = jwtDecode<DecodedJWT>(token);
-            const regulatorId = decoded.regulator_id;
-            if (!regulatorId) throw new Error('Regulator ID missing in token.');
-
-            // 3. Call API with regulator_id
-            await reportsAPI.submitMetrics(
-                month,
-                submissionType,
-                file,
-                regulatorId
-            );
-
+            // TODO: Implement API call to submit regulator report
             alert(`Report for ${month} (${submissionType}) submitted successfully!`);
 
             setShowSubmissionForm(false);
             resetForm();
             loadSubmissions();
-
         } catch (error: any) {
             console.error('Failed to submit:', error);
             alert(error.message || 'Failed to submit file. Check console for network errors.');
@@ -179,7 +184,6 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
-
                                 {/* Month */}
                                 <div className="space-y-2">
                                     <Label htmlFor="month">Reporting Month *</Label>
@@ -270,7 +274,6 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                         Cancel
                                     </Button>
                                 </div>
-
                             </form>
                         </CardContent>
                     </Card>
@@ -281,6 +284,16 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            <ReportInstructionsDialog
+                open={showInstructions}
+                onOpenChange={(open: any) => {
+                    setShowInstructions(open);
+                    if (!open) {
+                        setShowSubmissionForm(true);
+                    }
+                }}
+            />
+
             {/* Header */}
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
@@ -291,11 +304,16 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                     <div className="flex items-center justify-between">
                         <div>
                             <h1>Regulator Portal</h1>
-                            <p className="text-gray-600">{user?.user_metadata?.name}</p>
+                            <p className="text-gray-600">{user?.user_metadata?.name || user?.email}</p>
                             <p className="text-sm text-gray-500">{user?.user_metadata?.country || 'Country not set'}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button onClick={() => setShowSubmissionForm(true)}>
+                            <Button
+                                onClick={() => {
+                                    setShowInstructions(true);
+                                    setShowSubmissionForm(false);
+                                }}
+                            >
                                 <Plus className="size-4 mr-2" />
                                 Submit Document
                             </Button>
@@ -312,46 +330,96 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    {[
-                        {
-                            status: 'approved',
-                            count: submissions.filter(s => s.status === 'approved').length,
-                            color: 'from-green-500 to-emerald-500',
-                            icon: CheckCircle,
-                        },
-                        {
-                            status: 'pending',
-                            count: submissions.filter(s => s.status === 'pending').length,
-                            color: 'from-yellow-500 to-orange-500',
-                            icon: Clock,
-                        },
-                        {
-                            status: 'rejected',
-                            count: submissions.filter(s => s.status === 'rejected').length,
-                            color: 'from-red-500 to-pink-500',
-                            icon: XCircle,
-                        },
-                    ].map((item, index) => (
-                        <motion.div
-                            key={item.status}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.1 }}
-                        >
-                            <Card className="overflow-hidden">
-                                <div className={`h-2 bg-gradient-to-r ${item.color}`} />
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600 capitalize mb-1">{item.status}</p>
-                                            <p className="text-4xl">{item.count}</p>
-                                        </div>
-                                        <item.icon className={`size-12 opacity-20`} />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    ))}
+                    <KpiCard
+                        title="Licensed Users"
+                        value={uniqueOperators.length}
+                        icon={Users}
+                    />
+                    <KpiCard
+                        title="Total Submissions"
+                        value={submissions.length}
+                        icon={FileText}
+                    />
+                    <KpiCard
+                        title="Active Users"
+                        value={uniqueOperators.filter(op => op.is_active).length}
+                        icon={UserCheck}
+                        color="from-green-500 to-emerald-500"
+                    />
+                </div>
+
+                {/* Licensed Operators */}
+                <div className="mb-10">
+                    <Card className="border border-gray-200">
+                        <CardContent className="pt-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium text-gray-600">
+                                    Licensed Operators
+                                </p>
+                                <span className="text-xs text-gray-500">
+                  {uniqueOperators.length} total
+                </span>
+                            </div>
+
+                            {uniqueOperators.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <Users className="size-12 mx-auto mb-4 text-gray-400" />
+                                    <p>No licensed operators found</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-3">
+                                    {uniqueOperators.map((op) => {
+                                        const isActive = op.is_active;
+
+                                        return (
+                                            <div
+                                                key={op.user_id}
+                                                className="flex items-center gap-3 px-4 py-2 rounded-full border bg-gray-50 hover:bg-gray-100 transition"
+                                            >
+                                                {/* Icon avatar */}
+                                                <div
+                                                    className={`h-9 w-9 rounded-full flex items-center justify-center ${
+                                                        isActive
+                                                            ? 'bg-green-100 text-green-600'
+                                                            : 'bg-gray-200 text-gray-500'
+                                                    }`}
+                                                >
+                                                    <Building2 className="h-4 w-4" />
+                                                </div>
+
+                                                {/* Operator info */}
+                                                <div className="flex flex-col leading-tight">
+                          <span className="text-sm font-medium text-gray-800 max-w-[140px] truncate">
+                            {op.full_name ?? op.email}
+                          </span>
+
+                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                        {isActive ? (
+                                                            <>
+                                                                <UserCheck className="h-3 w-3 text-green-500" />
+                                                                Active
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <UserX className="h-3 w-3 text-gray-400" />
+                                                                Inactive
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Role badge */}
+                                                <div className="ml-2 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                                                    <ShieldCheck className="h-3 w-3" />
+                                                    Regulator
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Submissions List */}
@@ -371,7 +439,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             >
                                 <FileText className="size-12 mx-auto text-gray-400 mb-4" />
                                 <p className="text-gray-600 mb-4">No documents submitted yet</p>
-                                <Button onClick={() => setShowSubmissionForm(true)}>
+                                <Button onClick={() => setShowInstructions(true)}>
                                     <Plus className="size-4 mr-2" />
                                     Submit Your First Document
                                 </Button>

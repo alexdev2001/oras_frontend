@@ -79,7 +79,6 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
                 ${isRegulator ? "border-blue-200" : "border-gray-200"}
             `}
         >
-            {/* Control column */}
             <div className="flex flex-col w-64">
                 <Label className="text-sm font-medium mb-1 text-gray-700">
                     {isRegulator
@@ -87,7 +86,6 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
                         : "Operator: Monthly Summary (PDF)"}
                 </Label>
 
-                {/* Keep height consistent */}
                 {isRegulator ? (
                     <div className="h-10 rounded-md border bg-gray-50 flex items-center px-3 text-sm text-gray-500">
                         Latest available year
