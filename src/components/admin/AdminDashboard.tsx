@@ -1,26 +1,32 @@
-import {useState, useEffect} from "react";
-import {Button} from "@/components/ui/button.tsx";
-import { LogOut, BarChart3, FileCheck, AlertTriangle, Users, Database, FileText, Filter, Building2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
-import {AnalyticsOverview} from "@/components/admin/tabs/AnalyticsOverview.tsx";
-import {ReconciliationView} from "@/components/admin/tabs/ReconciliationView.tsx";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { LogOut, BarChart3, FileCheck, AlertTriangle, Users, Database, FileText, Filter, Building2, Menu, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AnalyticsOverview } from './tabs/AnalyticsOverview.tsx';
+import { ReconciliationView } from './tabs/ReconciliationView.tsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Label } from '@/components/ui/label.tsx';
-import {ReportsTab} from "@/components/admin/tabs/ReportsTab.tsx";
-import {authAPI, reportsAPI} from "@/utils/API.ts";
-import { jwtDecode } from "jwt-decode";
-import type { DecodedToken } from "@/types/token.ts";
-import {OperatorUserManagement} from "@/components/admin/tabs/OperatorUserManagement.tsx";
-import {managementAPI} from "@/utils/API.ts";
-import type {Operator} from "@/components/admin/tabs/OperatorUserManagement.tsx";
-import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
-import { RadioGroup } from '@headlessui/react';
+import { ReportsTab } from './tabs/ReportsTab.tsx';
+import { authAPI, managementAPI, reportsAPI } from '@/utils/API.ts';
+import { Card, CardContent } from '@/components/ui/card.tsx';
+import { OperatorUserManagement } from '@/components/admin/tabs/OperatorUserManagement.tsx';
+import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.tsx';
+import {RegulatorDashboard} from "@/components/regulator/RegulatorDashboard.tsx";
 import {RegulatorMain} from "@/components/admin/tabs/regulator/RegulatorMain.tsx";
-import {MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
+import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import type {RegulatorMetric} from "@/types/regulator-metrics.ts";
+import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
 
 interface AdminDashboardProps {
     onSignOut: () => void;
+}
+
+interface User {
+    email?: string;
+    user_metadata?: {
+        name?: string;
+        role?: string;
+    };
 }
 
 const operatorTabs = [
@@ -34,22 +40,21 @@ const regulatorTabs = [
     { value: 'dashboard', label: 'Dashboard', icon: Building2 },
     { value: 'metrics', label: 'Metrics', icon: BarChart3 },
     { value: 'users', label: 'User Management', icon: Users },
-
 ];
 
 export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
-    const [user, setUser] = useState<DecodedToken | null>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [mode, setMode] = useState<'operator' | 'regulator'>('operator');
     const [activeTab, setActiveTab] = useState('overview');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [operators, setOperators] = useState<Operator[]>([]);
     const [selectedOperator, setSelectedOperator] = useState<string>('all');
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
-    const [mockMetrics, setMockMetrics] = useState<RegulatorMetric[]>([]);
-    const [loadingOperators, setLoadingOperators] = useState(true)
+    const [loadingOperators, setLoadingOperators] = useState(true);
+    const [metrics, setMetrics] = useState<Metric[]>([]);
 
     useEffect(() => {
-        loadUserFromToken();
+        // loadUser();
         loadOperators();
         loadRegulatorMetrics();
     }, []);
@@ -77,27 +82,21 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             const metricsData = await reportsAPI.getRegulatorMetrics();
             console.log('regulator metrics:', metricsData);
             if (metricsData) {
-                setMockMetrics(metricsData);
+                setMetrics(metricsData);
             }
         } catch (error) {
             console.error('Failed to load regulator metrics:', error);
         }
     };
 
-    const loadUserFromToken = () => {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            console.warn("No auth token found");
-            return;
-        }
-
-        try {
-            const decoded: DecodedToken = jwtDecode(token);
-            setUser(decoded);
-        } catch (err) {
-            console.error("Failed to decode token:", err);
-        }
-    };
+    // const loadUser = async () => {
+    //     try {
+    //         const userData = await authAPI.getUser();
+    //         setUser(userData);
+    //     } catch (err) {
+    //         console.error("Failed to load user:", err);
+    //     }
+    // };
 
     const handleSignOut = async () => {
         try {
@@ -111,38 +110,41 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     // Render tabs based on mode
     const tabs = mode === 'operator' ? operatorTabs : regulatorTabs;
 
-    // Render content for regulator tabs
+    // Render content for regulator tabs (placeholder for now)
     function RegulatorTabContent({ value }: { value: string }) {
-        switch (value) {
-            case 'dashboard':
-                return <RegulatorMain/>;
-            case 'metrics':
-                return <MetricsTab metrics={mockMetrics}/>;
-            case 'users':
-                return <OperatorUserManagement/>
-            default:
-                return null;
-        }
+        return (
+            <div className="text-center py-12">
+                <p className="text-gray-600">
+                    {value === 'dashboard' && <RegulatorMain/>}
+                    {value === 'metrics' && <MetricsTab metrics={metrics}/>}
+                </p>
+                {value === 'users' && <OperatorUserManagement />}
+            </div>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h1>Admin Dashboard</h1>
-                            <p className="text-gray-600">Gaming Operator Reporting System</p>
+                        <div className="text-white">
+                            <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">Gaming Operator Reporting System</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="text-right mr-3">
-                                <p className="text-sm text-gray-600">{user?.email}</p>
-                                <p className="text-xs text-gray-400">Administrator</p>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right mr-2 hidden sm:block">
+                                <p className="text-sm font-medium text-white">{user?.email}</p>
+                                <p className="text-xs text-blue-100">Administrator</p>
                             </div>
-                            <Button variant="outline" onClick={handleSignOut}>
+                            <Button
+                                variant="outline"
+                                onClick={handleSignOut}
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                            >
                                 <LogOut className="size-4 mr-2" />
-                                Sign Out
+                                <span className="hidden sm:inline">Sign Out</span>
                             </Button>
                         </div>
                     </div>
@@ -151,150 +153,196 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <MonthlySummaryGenerator mode={mode} />
-                <div className="mb-6 bg-white border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <RadioGroup value={mode} onChange={setMode} className="w-full sm:w-auto flex space-x-4 bg-gray-100 rounded-full p-1">
-                        <RadioGroup.Option value="operator" className={({ active, checked }) =>
-                            `cursor-pointer rounded-full px-4 py-2 text-sm font-medium ${
-                                checked ? 'bg-indigo-600 text-white' : 'text-gray-700'
-                            }`
-                        }>
-                            Operator
-                        </RadioGroup.Option>
-                        <RadioGroup.Option value="regulator" className={({ active, checked }) =>
-                            `cursor-pointer rounded-full px-4 py-2 text-sm font-medium ${
-                                checked ? 'bg-indigo-600 text-white' : 'text-gray-700'
-                            }`
-                        }>
-                            Regulator
-                        </RadioGroup.Option>
-                    </RadioGroup>
-                    {mode === 'operator' && (
-                        <div className="flex items-center gap-6 flex-wrap">
-                            {/* Operator Filter */}
-                            <div className="flex items-center gap-2">
-                                <Filter className="size-5 text-gray-600" />
-                                <Label htmlFor="operator-filter" className="text-sm font-medium">Operator:</Label>
+                {/* Mode Switcher & Filters Card */}
+                <Card className="mb-6 shadow-md border-0 bg-white/80 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                            {/* Mode Switcher */}
+                            <div className="flex flex-col gap-2">
+                                <Label className="text-sm font-semibold text-gray-700">View Mode</Label>
+                                <div className="inline-flex rounded-lg bg-gradient-to-r from-slate-100 to-slate-50 p-1 shadow-inner">
+                                    <button
+                                        onClick={() => setMode('operator')}
+                                        className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
+                                            mode === 'operator'
+                                                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md transform scale-105'
+                                                : 'text-gray-700 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        <Building2 className="size-4 inline mr-2" />
+                                        Operator
+                                    </button>
+                                    <button
+                                        onClick={() => setMode('regulator')}
+                                        className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
+                                            mode === 'regulator'
+                                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md transform scale-105'
+                                                : 'text-gray-700 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        <FileCheck className="size-4 inline mr-2" />
+                                        Regulator
+                                    </button>
+                                </div>
                             </div>
-                            <Select value={selectedOperator} onValueChange={setSelectedOperator}>
-                                <SelectTrigger id="operator-filter" className="w-[200px]">
-                                    <SelectValue placeholder="Loading operators..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Operators</SelectItem>
-                                    {operators.map(op => (
-                                        <SelectItem key={op.operator_id} value={op.operator_id.toString()}>
-                                            {op.operator_name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
 
-                            {/* Month Filter */}
-                            <div className="flex items-center gap-2">
-                                <Filter className="size-5 text-gray-600" />
-                                <Label htmlFor="month-filter" className="text-sm font-medium">Month:</Label>
-                            </div>
-                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                <SelectTrigger id="month-filter" className="w-[180px]">
-                                    <SelectValue placeholder="All Months" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Months</SelectItem>
-                                    <SelectItem value="2025-01">Jan 2025</SelectItem>
-                                    <SelectItem value="2025-02">Feb 2025</SelectItem>
-                                    <SelectItem value="2025-03">Mar 2025</SelectItem>
-                                    <SelectItem value="2025-04">Apr 2025</SelectItem>
-                                    <SelectItem value="2025-05">May 2025</SelectItem>
-                                    <SelectItem value="2025-06">Jun 2025</SelectItem>
-                                    <SelectItem value="2025-07">Jul 2025</SelectItem>
-                                    <SelectItem value="2025-08">Aug 2025</SelectItem>
-                                    <SelectItem value="2025-09">Sep 2025</SelectItem>
-                                    <SelectItem value="2025-10">Oct 2025</SelectItem>
-                                    <SelectItem value="2025-11">Nov 2025</SelectItem>
-                                    <SelectItem value="2025-12">Dec 2025</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    {/* Tabs */}
-                    <div className="relative">
-                        {/* Mobile Hamburger Menu */}
-                        <div className="sm:hidden relative">
-                            <button
-                                className="p-2 border rounded"
-                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            >
-                                ☰
-                            </button>
+                            {/* Filters - Only show for operator mode */}
+                            {mode === 'operator' && (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1 lg:justify-end">
+                                    {/* Operator Filter */}
+                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                        <Label htmlFor="operator-filter" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <Filter className="size-4 text-indigo-600" />
+                                            Operator
+                                        </Label>
+                                        <Select value={selectedOperator} onValueChange={setSelectedOperator}>
+                                            <SelectTrigger id="operator-filter" className="w-full sm:w-[220px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+                                                <SelectValue placeholder="Loading operators..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    <span className="font-medium">All Operators</span>
+                                                </SelectItem>
+                                                {operators.map(op => (
+                                                    <SelectItem key={op.operator_id} value={op.operator_id.toString()}>
+                                                        {op.operator_name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                            {mobileMenuOpen && (
-                                <div className="absolute bg-white border rounded mt-2 w-56 z-10 shadow-lg">
-                                    {tabs.map((tab) => {
-                                        const Icon = tab.icon;
-                                        return (
-                                            <button
-                                                key={tab.value}
-                                                className={`flex items-center gap-2 w-full px-4 py-2 text-left ${
-                                                    activeTab === tab.value ? 'bg-indigo-100 font-semibold' : ''
-                                                }`}
-                                                onClick={() => {
-                                                    setActiveTab(tab.value);
-                                                    setMobileMenuOpen(false);
-                                                }}
-                                            >
-                                                <Icon className="size-4" />
-                                                {tab.label}
-                                            </button>
-                                        );
-                                    })}
+                                    {/* Month Filter */}
+                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                        <Label htmlFor="month-filter" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            <Filter className="size-4 text-indigo-600" />
+                                            Month
+                                        </Label>
+                                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                            <SelectTrigger id="month-filter" className="w-full sm:w-[200px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+                                                <SelectValue placeholder="All Months" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    <span className="font-medium">All Months</span>
+                                                </SelectItem>
+                                                <SelectItem value="2025-01">January 2025</SelectItem>
+                                                <SelectItem value="2025-02">February 2025</SelectItem>
+                                                <SelectItem value="2025-03">March 2025</SelectItem>
+                                                <SelectItem value="2025-04">April 2025</SelectItem>
+                                                <SelectItem value="2025-05">May 2025</SelectItem>
+                                                <SelectItem value="2025-06">June 2025</SelectItem>
+                                                <SelectItem value="2025-07">July 2025</SelectItem>
+                                                <SelectItem value="2025-08">August 2025</SelectItem>
+                                                <SelectItem value="2025-09">September 2025</SelectItem>
+                                                <SelectItem value="2025-10">October 2025</SelectItem>
+                                                <SelectItem value="2025-11">November 2025</SelectItem>
+                                                <SelectItem value="2025-12">December 2025</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             )}
                         </div>
+                    </CardContent>
+                </Card>
 
-                        {/* Desktop tabs */}
-                        <TabsList className="mb-8">
-                            {tabs.map(tab => (
-                                <TabsTrigger key={tab.value} value={tab.value}>
-                                    <tab.icon className="size-4 mr-2" />
-                                    {tab.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </div>
+                <MonthlySummaryGenerator mode={mode}/>
 
-                    {/* Tabs Content */}
-                    {mode === 'operator' ? (
-                        <>
-                            <TabsContent value="overview">
-                                <AnalyticsOverview selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
-                            </TabsContent>
+                {/* Tabs Section */}
+                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            {/* Mobile Hamburger Menu */}
+                            <div className="lg:hidden mb-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                    className="w-full justify-between"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        {(() => {
+                                            const activeTabData = tabs.find(t => t.value === activeTab);
+                                            const Icon = activeTabData?.icon;
+                                            return Icon ? <Icon className="size-4" /> : null;
+                                        })()}
+                                        {tabs.find(t => t.value === activeTab)?.label}
+                                    </span>
+                                    {mobileMenuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
+                                </Button>
 
-                            <TabsContent value="reports">
-                                <ReportsTab selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
-                            </TabsContent>
+                                {mobileMenuOpen && (
+                                    <div className="mt-2 border rounded-lg bg-white shadow-lg overflow-hidden">
+                                        {tabs.map((tab) => {
+                                            const Icon = tab.icon;
+                                            return (
+                                                <button
+                                                    key={tab.value}
+                                                    className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors ${
+                                                        activeTab === tab.value
+                                                            ? 'bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 font-semibold border-l-4 border-indigo-600'
+                                                            : 'text-gray-700 hover:bg-gray-50'
+                                                    }`}
+                                                    onClick={() => {
+                                                        setActiveTab(tab.value);
+                                                        setMobileMenuOpen(false);
+                                                    }}
+                                                >
+                                                    <Icon className="size-5" />
+                                                    {tab.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
 
-                            <TabsContent value="reconciliation">
-                                <ReconciliationView/>
-                            </TabsContent>
+                            {/* Desktop Tabs */}
+                            <TabsList className="hidden lg:inline-flex mb-6 bg-gradient-to-r from-slate-100 to-slate-50 p-1">
+                                {tabs.map(tab => (
+                                    <TabsTrigger
+                                        key={tab.value}
+                                        value={tab.value}
+                                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+                                    >
+                                        <tab.icon className="size-4 mr-2" />
+                                        {tab.label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
 
-                            <TabsContent value="users">
-                                <OperatorUserManagement/>
-                            </TabsContent>
-                        </>
-                    ) : (
-                        <>
-                            {regulatorTabs.map(tab => (
-                                <TabsContent key={tab.value} value={tab.value}>
-                                    <RegulatorTabContent value={tab.value} />
-                                </TabsContent>
-                            ))}
-                        </>
-                    )}
-                </Tabs>
+                            {/* Tabs Content */}
+                            {mode === 'operator' ? (
+                                <>
+                                    <TabsContent value="overview" className="mt-0">
+                                        <AnalyticsOverview selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
+                                    </TabsContent>
+
+                                    <TabsContent value="reports" className="mt-0">
+                                        <ReportsTab selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
+                                    </TabsContent>
+
+                                    <TabsContent value="reconciliation" className="mt-0">
+                                        <ReconciliationView/>
+                                    </TabsContent>
+
+                                    <TabsContent value="users" className="mt-0">
+                                        <OperatorUserManagement/>
+                                    </TabsContent>
+                                </>
+                            ) : (
+                                <>
+                                    {regulatorTabs.map(tab => (
+                                        <TabsContent key={tab.value} value={tab.value} className="mt-0">
+                                            <RegulatorTabContent value={tab.value} />
+                                        </TabsContent>
+                                    ))}
+                                </>
+                            )}
+                        </Tabs>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

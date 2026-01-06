@@ -1,132 +1,50 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button.tsx';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { reportsAPI, authAPI } from '@/utils/API.ts';
-import type { ParsedMetric} from '@/types/report.ts';
+import type { OperatorReport } from '../../types/report.ts';
+import { Plus, LogOut, FileText, CheckCircle, XCircle, Clock, TrendingUp, Award, Target, BarChart3, PieChart, Trophy, Star, Filter, Calendar, Lightbulb } from 'lucide-react';
 import { ReportSubmissionForm } from '../report/ReportSubmissionForm.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
-import type {DecodedToken} from "@/types/token.ts";
-import {jwtDecode} from "jwt-decode";
-import {managementAPI} from "@/utils/API.ts";
-import type {OperatorReport} from "@/types/report.ts";
-import { Plus, LogOut, FileText, CheckCircle, XCircle, Clock, TrendingUp, Award, Target, BarChart3, PieChart, Trophy, Star, Filter, Calendar, Lightbulb } from 'lucide-react';
-import {Progress} from "@/components/ui/progress.tsx";
+import { Progress } from '@/components/ui/progress.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
-import {Label} from "@/components/ui/label.tsx";
-import type {TransformedReport} from "@/types/report.ts";
+import { Label } from '@/components/ui/label.tsx';
 
 interface OperatorDashboardProps {
     onSignOut: () => void;
 }
 
 export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
-    const [reports, setReports] = useState<TransformedReport[]>([]);
+    const [reports, setReports] = useState<OperatorReport[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
     const [user, setUser] = useState<any>(null);
-    const [operatorId, setOperatorId] = useState<number | null>(null);
-    const [operatorName, setOperatorName] = useState<string>("");
-    const [userId, setUserId] = useState<number | null>(null);
     const [activeView, setActiveView] = useState<'dashboard' | 'reports' | 'insights'>('dashboard');
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
     useEffect(() => {
-        loadUser();
-    }, []);
-
-    useEffect(() => {
-        const token = localStorage.getItem("authToken");
-
-        if (!token) return;
-
-        try {
-            const decoded = jwtDecode<DecodedToken>(token);
-
-            setOperatorId(decoded.operator_id ?? null);
-            setUserId(decoded.user_id ?? null);
-
-            console.log("Decoded token:", decoded);
-
-        } catch (err) {
-            console.error("Failed to decode token:", err);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!operatorId) return;
-
-        const fetchOperatorName = async () => {
-            try {
-                const operators = await managementAPI.getOperators();
-                const matched = operators.find(op => op.operator_id === operatorId);
-
-                if (matched) {
-                    setOperatorName(matched.operator_name);
-                } else {
-                    console.warn("Operator not found for ID:", operatorId);
-                }
-            } catch (err) {
-                console.error("Failed to load operators:", err);
-            }
-        };
-
-        fetchOperatorName();
-    }, [operatorId]);
-
-    useEffect(() => {
-        if (operatorId === null) return;
-
-        const loadReports = async () => {
-            setIsLoading(true);
-            try {
-                const res = await reportsAPI.getMyReports(operatorId);
-                console.log('raw', res);
-                const transformed = transformReports(res);
-                setReports(transformed);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
+        // loadUser();
         loadReports();
-    }, [operatorId]);
+    }, []);
 
-    const loadUser = async () => {
-        try {
-            const userData = await authAPI.getUser();
-            setUser(userData);
-        } catch (error) {
-            console.error('Failed to load user:', error);
-        }
-    };
-
-    const transformReports = (raw: ParsedMetric[]): TransformedReport[] =>
-        raw.map((r) => {
-            const date = new Date(r.date_time);
-
-            return {
-                ...r,
-                year: date.getFullYear(),
-                month: date.getMonth() + 1,
-                submittedAt: r.created_at,
-
-                totalStake: r.total_stake,
-                totalGGR: r.ggr,
-                overallGGRPercentage: r.ggr_percentage,
-                totalNetRevenue: r.ngr_post_levy,
-
-                gameBreakdown: [],
-            };
-        });
+    // const loadUser = async () => {
+    //     try {
+    //         const userData = await authAPI.getUser();
+    //         setUser(userData);
+    //     } catch (error) {
+    //         console.error('Failed to load user:', error);
+    //     }
+    // };
 
     const loadReports = async () => {
         setIsLoading(true);
         try {
-            const fetchedReports = await reportsAPI.getMyReports(operatorId);
-            setReports(fetchedReports.sort((a: ParsedMetric, b: ParsedMetric) => b.report_id - a.report_id));
-            console.log(fetchedReports);
+            const { reports: fetchedReports } = await reportsAPI.getMyReports();
+            setReports(fetchedReports.sort((a: OperatorReport, b: OperatorReport) =>
+                new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+            ));
         } catch (error) {
             console.error('Failed to load reports:', error);
         } finally {
@@ -168,8 +86,6 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
     const filteredReports = selectedMonth === 'all'
         ? reports
         : reports.filter(r => `${r.year}-${String(r.month).padStart(2, '0')}` === selectedMonth);
-
-    console.log('filteredReports', filteredReports);
 
     // Calculate insights based on filtered reports
     const approvedReports = filteredReports.filter(r => r.status === 'approved');
@@ -240,25 +156,32 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
             {/* Header */}
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="bg-white border-b sticky top-0 z-50"
+                className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 shadow-lg sticky top-0 z-50"
             >
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h1>Operator Portal</h1>
-                            <p className="text-gray-600">{operatorName}</p>
+                        <div className="text-white">
+                            <h1 className="text-3xl font-bold tracking-tight">Operator Portal</h1>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">{user?.user_metadata?.operatorName}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button onClick={() => setShowSubmissionForm(true)}>
+                            <Button
+                                onClick={() => setShowSubmissionForm(true)}
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                            >
                                 <Plus className="size-4 mr-2" />
                                 Submit Report
                             </Button>
-                            <Button variant="outline" onClick={handleSignOut}>
+                            <Button
+                                variant="outline"
+                                onClick={handleSignOut}
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                            >
                                 <LogOut className="size-4 mr-2" />
                                 Sign Out
                             </Button>
@@ -266,7 +189,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                     </div>
 
                     {/* Navigation Tabs */}
-                    <div className="flex gap-2 mt-4">
+                    <div className="flex gap-2 mt-6">
                         {[
                             { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
                             { id: 'reports', label: 'Reports', icon: FileText },
@@ -276,6 +199,10 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                 key={tab.id}
                                 variant={activeView === tab.id ? 'default' : 'ghost'}
                                 onClick={() => setActiveView(tab.id as any)}
+                                className={activeView === tab.id
+                                    ? 'bg-white text-indigo-600 hover:bg-white/90'
+                                    : 'text-white hover:bg-white/10'
+                                }
                             >
                                 <tab.icon className="size-4 mr-2" />
                                 {tab.label}
@@ -361,22 +288,16 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                     },
                                     {
                                         title: 'Total Revenue',
-                                        value: totalRevenue.toLocaleString('en-MW', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        }),
+                                        value: totalRevenue,
                                         icon: TrendingUp,
-                                        prefix: 'MWK ',
+                                        prefix: '$',
                                         format: true,
                                     },
                                     {
                                         title: 'Total GGR',
-                                        value: totalGGR.toLocaleString('en-MW', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2
-                                        }),
+                                        value: totalGGR,
                                         icon: BarChart3,
-                                        prefix: 'MWK ',
+                                        prefix: '$',
                                         format: true,
                                     },
                                     {
@@ -392,16 +313,14 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.1 }}
-                                        className="h-full"
                                     >
-                                        <Card className="h-full flex flex-col justify-between min-h-[140px]">
+                                        <Card>
                                             <CardHeader className="pb-2">
                                                 <CardDescription className="flex items-center justify-between">
                                                     <span>{stat.title}</span>
                                                     <stat.icon className="size-4 text-gray-400" />
                                                 </CardDescription>
                                             </CardHeader>
-
                                             <CardContent>
                                                 <motion.div
                                                     initial={{ scale: 0.5 }}
@@ -409,13 +328,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                                     transition={{ delay: index * 0.1 + 0.2, type: 'spring' }}
                                                     className="text-3xl"
                                                 >
-                                                    {stat.prefix || ''}
-                                                    {stat.format
-                                                        ? stat.value
-                                                        : stat.decimals
-                                                            ? stat.value.toFixed(stat.decimals)
-                                                            : stat.value}
-                                                    {stat.suffix || ''}
+                                                    {stat.prefix || ''}{stat.format ? stat.value.toLocaleString() : stat.decimals ? stat.value.toFixed(stat.decimals) : stat.value}{stat.suffix || ''}
                                                 </motion.div>
                                             </CardContent>
                                         </Card>
@@ -449,33 +362,13 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                                                             </linearGradient>
                                                         </defs>
-
                                                         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-
                                                         <XAxis dataKey="month" />
-
-                                                        {/* Format Y-axis values to fit: 1.2M, 340K, etc. */}
-                                                        <YAxis
-                                                            tickFormatter={(value: number) => {
-                                                                if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + "M";
-                                                                if (value >= 1_000) return (value / 1_000).toFixed(1) + "K";
-                                                                return value;
-                                                            }}
-                                                        />
-
+                                                        <YAxis />
                                                         <Tooltip
-                                                            formatter={(value: number) =>
-                                                                `MWK ${value.toLocaleString('en-MW', {
-                                                                    minimumFractionDigits: 2,
-                                                                    maximumFractionDigits: 2
-                                                                })}`
-                                                            }
-                                                            contentStyle={{
-                                                                borderRadius: '8px',
-                                                                border: '1px solid #e5e7eb'
-                                                            }}
+                                                            formatter={(value: number) => `$${value.toLocaleString()}`}
+                                                            contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
                                                         />
-
                                                         <Area
                                                             type="monotone"
                                                             dataKey="revenue"

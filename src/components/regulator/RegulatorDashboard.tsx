@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authAPI, managementAPI } from '@/utils/API.ts';
 import { Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { KpiCard } from './KpiCard.tsx';
-import { ReportInstructionsDialog } from './ReportInstructionDialog.tsx';
+import { KpiCard } from './KpiCard';
+import { ReportInstructionsDialog } from './ReportInstructionDialog';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -57,6 +57,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [submissionType, setSubmissionType] = useState<'online' | 'offline'>('online');
 
     useEffect(() => {
+        // loadUser();
         loadSubmissions();
         loadUniqueOperators();
     }, []);
@@ -158,15 +159,19 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     if (showSubmissionForm) {
         return (
-            <div className="min-h-screen bg-gray-50">
-                <div className="bg-white border-b">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+                <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 shadow-lg">
+                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <h1>Submit Document</h1>
-                                <p className="text-gray-600">Upload regulatory documents</p>
+                            <div className="text-white">
+                                <h1 className="text-3xl font-bold tracking-tight">Submit Document</h1>
+                                <p className="text-blue-100 mt-1 text-sm">Upload regulatory documents</p>
                             </div>
-                            <Button variant="outline" onClick={() => setShowSubmissionForm(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowSubmissionForm(false)}
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                            >
                                 Cancel
                             </Button>
                         </div>
@@ -174,7 +179,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 </div>
 
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <Card>
+                    <Card className="shadow-lg border-0">
                         <CardHeader>
                             <CardTitle>Document Submission</CardTitle>
                             <CardDescription>
@@ -283,10 +288,10 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
             <ReportInstructionsDialog
                 open={showInstructions}
-                onOpenChange={(open: any) => {
+                onOpenChange={(open) => {
                     setShowInstructions(open);
                     if (!open) {
                         setShowSubmissionForm(true);
@@ -298,14 +303,14 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="bg-white border-b sticky top-0 z-50"
+                className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 shadow-lg sticky top-0 z-50"
             >
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h1>Regulator Portal</h1>
-                            <p className="text-gray-600">{user?.user_metadata?.name || user?.email}</p>
-                            <p className="text-sm text-gray-500">{user?.user_metadata?.country || 'Country not set'}</p>
+                        <div className="text-white">
+                            <h1 className="text-3xl font-bold tracking-tight">Regulator Portal</h1>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">{user?.user_metadata?.name || user?.email}</p>
+                            <p className="text-sm text-blue-200">{user?.user_metadata?.country || 'Country not set'}</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -313,11 +318,16 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                     setShowInstructions(true);
                                     setShowSubmissionForm(false);
                                 }}
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
                             >
                                 <Plus className="size-4 mr-2" />
                                 Submit Document
                             </Button>
-                            <Button variant="outline" onClick={handleSignOut}>
+                            <Button
+                                variant="outline"
+                                onClick={handleSignOut}
+                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                            >
                                 <LogOut className="size-4 mr-2" />
                                 Sign Out
                             </Button>

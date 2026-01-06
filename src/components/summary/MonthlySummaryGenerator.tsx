@@ -112,7 +112,7 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
                 disabled={loading || (!isRegulator && !selectedMonth)}
                 className={`
                     h-10 px-6
-                    ${isRegulator ? "bg-blue-600 hover:bg-blue-700" : ""}
+                    ${isRegulator ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-600 hover:bg-blue-700"}
                 `}
             >
                 {loading
