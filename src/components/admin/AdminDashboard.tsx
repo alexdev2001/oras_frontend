@@ -65,6 +65,10 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         setMobileMenuOpen(false);
     }, [mode]);
 
+    useEffect(() => {
+        console.log("Selected month changed:", selectedMonth);
+    }, [selectedMonth]);
+
     const loadOperators = async () => {
         try {
             setLoadingOperators(true);
@@ -113,7 +117,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     // Render content for regulator tabs (placeholder for now)
     function RegulatorTabContent({ value }: { value: string }) {
         return (
-            <div className="text-center py-12">
+            <div className="text-center ">
                 <p className="text-gray-600">
                     {value === 'dashboard' && <RegulatorMain/>}
                     {value === 'metrics' && <MetricsTab metrics={metrics}/>}
@@ -122,6 +126,31 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             </div>
         );
     }
+
+    const getLast12Months = () => {
+        const months: { value: string; label: string }[] = [];
+        const now = new Date(); // Tue Jan 06 2026
+
+        for (let i = 0; i < 12; i++) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+
+            months.push({
+                value: `${year}-${month}`,
+                label: date.toLocaleString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                }),
+            });
+        }
+
+        return months;
+    };
+
+    const months = getLast12Months();
+    console.log('months', months);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
@@ -227,18 +256,12 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                                 <SelectItem value="all">
                                                     <span className="font-medium">All Months</span>
                                                 </SelectItem>
-                                                <SelectItem value="2025-01">January 2025</SelectItem>
-                                                <SelectItem value="2025-02">February 2025</SelectItem>
-                                                <SelectItem value="2025-03">March 2025</SelectItem>
-                                                <SelectItem value="2025-04">April 2025</SelectItem>
-                                                <SelectItem value="2025-05">May 2025</SelectItem>
-                                                <SelectItem value="2025-06">June 2025</SelectItem>
-                                                <SelectItem value="2025-07">July 2025</SelectItem>
-                                                <SelectItem value="2025-08">August 2025</SelectItem>
-                                                <SelectItem value="2025-09">September 2025</SelectItem>
-                                                <SelectItem value="2025-10">October 2025</SelectItem>
-                                                <SelectItem value="2025-11">November 2025</SelectItem>
-                                                <SelectItem value="2025-12">December 2025</SelectItem>
+
+                                                {months.map(month => (
+                                                    <SelectItem key={month.value} value={month.value}>
+                                                        {month.label}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>

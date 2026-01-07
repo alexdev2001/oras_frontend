@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { authAPI, managementAPI } from '@/utils/API.ts';
+import {authAPI, managementAPI, reportsAPI} from '@/utils/API.ts';
 import { Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
@@ -126,12 +126,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         setIsSubmitting(true);
 
         try {
-            // TODO: Implement API call to submit regulator report
-            alert(`Report for ${month} (${submissionType}) submitted successfully!`);
-
-            setShowSubmissionForm(false);
-            resetForm();
-            loadSubmissions();
+            const response = reportsAPI.submitMetrics(month, submissionType, file);
+            if (response !== null) {
+                alert(`Report for ${month} (${submissionType}) submitted successfully!`);
+                setShowSubmissionForm(false);
+                resetForm();
+                loadSubmissions();
+            }
         } catch (error: any) {
             console.error('Failed to submit:', error);
             alert(error.message || 'Failed to submit file. Check console for network errors.');

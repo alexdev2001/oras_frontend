@@ -135,14 +135,15 @@ export const reportsAPI = {
         return response.json();
     },
 
-    async downloadRegulatorExcel() {
+    async downloadRegulatorExcel(regulatorId: number) {
         const response = await fetch(
-            `${BASE_URL}/api/v1/regulator-report-summary`,
+            `${BASE_URL}/api/v1/regulator-report-summary?regulator_id=${regulatorId}`,
             {
                 method: "GET",
                 headers: {
-                    ...getAuthHeader(),
-                    Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    ...(await getAuthHeader()),
+                    Accept:
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 },
             }
         );
@@ -319,7 +320,6 @@ export const reportsAPI = {
         month: string,
         submissionType: 'online' | 'offline',
         file: File,
-        regulatorId: number
     ) {
         if (!file) throw new Error('File object is missing.');
 
@@ -327,7 +327,6 @@ export const reportsAPI = {
         formData.append('month_year', month);
         formData.append('report_type_status', submissionType);
         formData.append('file', file);
-        formData.append('regulator_id', regulatorId.toString()); // Add regulator_id here
 
         const response = await fetch(`${BASE_URL}/api/v1/regulators/submit_metrics`, {
             method: 'POST',
