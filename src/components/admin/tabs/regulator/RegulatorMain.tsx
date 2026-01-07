@@ -7,6 +7,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+    pageTransition,
+    staggerContainer,
+    staggerItem
+} from "@/lib/animations";
+import {
     Users,
     FileCheck
 } from "lucide-react";
@@ -80,15 +85,23 @@ export function RegulatorMain() {
     ];
 
     return (
-        <div className="space-y-8">
+        <motion.div
+            className="space-y-8"
+            variants={pageTransition}
+            initial="hidden"
+            animate="show"
+        >
             {/* KPI GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <motion.div
+                className="grid grid-cols-1 sm:grid-cols-3 gap-6"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+            >
                 {kpis.map((kpi, i) => (
                     <motion.div
                         key={kpi.label}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
+                        variants={staggerItem}
                     >
                         <Card className="hover:shadow-md transition">
                             <CardHeader className="flex flex-row items-center justify-between">
@@ -105,92 +118,106 @@ export function RegulatorMain() {
                         </Card>
                     </motion.div>
                 ))}
-            </div>
+            </motion.div>
 
             {/* CHART + OPERATORS */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <motion.div
+                className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+            >
                 {/* BAR CHART */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="text-sm text-muted-foreground">
-                            Stake vs GGR (Latest Period)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[260px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
-                                <XAxis dataKey="name" />
-                                <Tooltip />
-                                <Bar dataKey="value">
-                                    {chartData.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={entry.color}
-                                        />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+                <motion.div variants={staggerItem} className="lg:col-span-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm text-muted-foreground">
+                                Stake vs GGR (Latest Period)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[260px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData}>
+                                    <XAxis dataKey="name" />
+                                    <Tooltip />
+                                    <Bar dataKey="value">
+                                        {chartData.map((entry, index) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={entry.color}
+                                            />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </motion.div>
 
                 {/* TOP OPERATORS */}
+                <motion.div variants={staggerItem}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm text-muted-foreground">
+                                Top Operators by GGR
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {topOperators.map(op => (
+                                <motion.div
+                                    key={op.operator_name}
+                                    variants={staggerItem}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-800">
+                                            {op.operator_name}
+                                        </span>
+                                        <Badge variant="secondary">
+                                            {op.ggr_net_cash?.toLocaleString()}
+                                        </Badge>
+                                    </div>
+                                    <Separator className="my-2" />
+                                </motion.div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </motion.div>
+
+            {/* FEES SUMMARY */}
+            <motion.div variants={staggerItem}>
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-sm text-muted-foreground">
-                            Top Operators by GGR
+                            Regulatory Fees Summary
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        {topOperators.map(op => (
-                            <div key={op.operator_name}>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-800">
-                                        {op.operator_name}
-                                    </span>
-                                    <Badge variant="secondary">
-                                        {op.ggr_net_cash?.toLocaleString()}
-                                    </Badge>
-                                </div>
-                                <Separator className="my-2" />
-                            </div>
-                        ))}
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div>
+                            <p className="text-sm text-muted-foreground">IQ Fees</p>
+                            <p className="text-lg text-gray-900">
+                                {totalIQ.toLocaleString()}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">
+                                Furgugo Fees
+                            </p>
+                            <p className="text-lg text-gray-900">
+                                {totalFurgugo.toLocaleString()}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">
+                                Operators Covered
+                            </p>
+                            <p className="text-lg text-gray-900">
+                                {uniqueOperators}
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
-            </div>
-
-            {/* FEES SUMMARY */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-sm text-muted-foreground">
-                        Regulatory Fees Summary
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div>
-                        <p className="text-sm text-muted-foreground">IQ Fees</p>
-                        <p className="text-lg text-gray-900">
-                            {totalIQ.toLocaleString()}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-muted-foreground">
-                            Furgugo Fees
-                        </p>
-                        <p className="text-lg text-gray-900">
-                            {totalFurgugo.toLocaleString()}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-muted-foreground">
-                            Operators Covered
-                        </p>
-                        <p className="text-lg text-gray-900">
-                            {uniqueOperators}
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }
