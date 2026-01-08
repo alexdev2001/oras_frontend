@@ -26,10 +26,16 @@ import {
     ResponsiveContainer,
     Cell
 } from "recharts";
+import type { RegulatorMetric } from "@/types/regulator-metrics";
 
-export function RegulatorMain() {
-    const [metrics, setMetrics] = useState<any[]>([]);
-    const [regulators, setRegulators] = useState<any[]>([]);
+interface RegulatorMainProps {
+    selectedRegulator: string;
+    selectedMonth: string;
+}
+
+export function RegulatorMain({ selectedRegulator, selectedMonth }: RegulatorMainProps) {
+    const [metrics, setMetrics] = useState<RegulatorMetric[]>([]);
+    const [regulators, setRegulators] = useState<{ regulator_id: number; regulator_name: string }[]>([]);
 
     useEffect(() => {
         const load = async () => {
@@ -43,38 +49,48 @@ export function RegulatorMain() {
         load();
     }, []);
 
+    const filteredMetrics = metrics.filter(m => {
+        const regulatorMatch =
+            selectedRegulator === 'all' ||
+            String(m.regulator_id) === selectedRegulator;
+
+        const monthMatch =
+            selectedMonth === 'all' ||
+            m.month_year === selectedMonth;
+
+        return regulatorMatch && monthMatch;
+    });
+
     /* ------------------ Aggregations ------------------ */
-    const totalIQ = metrics.reduce((s, m) => s + (m.iq_fee || 0), 0);
-    const totalFurgugo = metrics.reduce((s, m) => s + (m.furgugo_fee || 0), 0);
-    const uniqueOperators = new Set(metrics.map(m => m.operator_name)).size;
+    const totalIQ = filteredMetrics.reduce((s, m) => s + (m.iq_fee || 0), 0);
+    const totalFurgugo = filteredMetrics.reduce((s, m) => s + (m.furgugo_fee || 0), 0);
+    const uniqueOperators = new Set(filteredMetrics.map(m => m.operator_name)).size;
 
     const chartData = [
         {
             name: "Stake",
-            value: metrics.reduce((s, m) => s + (m.revenue_stake || 0), 0),
+            value: filteredMetrics.reduce((s, m) => s + (m.revenue_stake || 0), 0),
             color: "#6366f1" // indigo
         },
         {
             name: "GGR",
-            value: metrics.reduce((s, m) => s + (m.ggr_net_cash || 0), 0),
+            value: filteredMetrics.reduce((s, m) => s + (m.ggr_net_cash || 0), 0),
             color: "#22c55e" // green
         }
     ];
 
-    const topOperators = [...metrics]
+    const topOperators = [...filteredMetrics]
         .sort((a, b) => (b.ggr_net_cash || 0) - (a.ggr_net_cash || 0))
         .slice(0, 5);
 
     /* ------------------ KPI CARDS ------------------ */
     const kpis = [
         {
-            label: "Reports Submitted",
-            value: metrics.length,
-            icon: FileCheck
-        },
-        {
             label: "Regulators",
-            value: regulators.length,
+            value:
+                selectedRegulator === 'all'
+                    ? regulators.length
+                    : regulators.filter(r => String(r.regulator_id) === selectedRegulator).length,
             icon: Users
         },
         {

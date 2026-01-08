@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, BarChart3, FileCheck, AlertTriangle, Users, Database, FileText, Filter, Building2, Menu, X } from 'lucide-react';
+import { LogOut, BarChart3, FileCheck, Users, Database, FileText, Filter, Building2, Menu, X, Landmark, Calendar } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnalyticsOverview } from './tabs/AnalyticsOverview.tsx';
 import { ReconciliationView } from './tabs/ReconciliationView.tsx';
@@ -11,7 +11,6 @@ import { authAPI, managementAPI, reportsAPI } from '@/utils/API.ts';
 import { Card, CardContent } from '@/components/ui/card.tsx';
 import { OperatorUserManagement } from '@/components/admin/tabs/OperatorUserManagement.tsx';
 import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.tsx';
-import {RegulatorDashboard} from "@/components/regulator/RegulatorDashboard.tsx";
 import {RegulatorMain} from "@/components/admin/tabs/regulator/RegulatorMain.tsx";
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import type {RegulatorMetric} from "@/types/regulator-metrics.ts";
@@ -27,6 +26,11 @@ interface User {
         name?: string;
         role?: string;
     };
+}
+
+interface Regulator {
+    regulator_id: number;
+    regulator_name: string;
 }
 
 const operatorTabs = [
@@ -49,15 +53,25 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [operators, setOperators] = useState<Operator[]>([]);
     const [selectedOperator, setSelectedOperator] = useState<string>('all');
+    const [regulators, setRegulators] = useState<Regulator[]>([]);
+    const [selectedRegulator, setSelectedRegulator] = useState<string>('all');
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [loadingOperators, setLoadingOperators] = useState(true);
     const [metrics, setMetrics] = useState<Metric[]>([]);
 
     useEffect(() => {
-        // loadUser();
         loadOperators();
+        loadRegulators();
         loadRegulatorMetrics();
     }, []);
+    const loadRegulators = async () => {
+        try {
+            const regulatorsData = await managementAPI.getRegulators();
+            setRegulators((regulatorsData || []).filter(r => r && r.regulator_id));
+        } catch (error) {
+            console.error('Failed to load regulators:', error);
+        }
+    };
 
     useEffect(() => {
         // Reset active tab when mode changes
@@ -119,8 +133,16 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         return (
             <div className="text-center ">
                 <p className="text-gray-600">
-                    {value === 'dashboard' && <RegulatorMain/>}
-                    {value === 'metrics' && <MetricsTab metrics={metrics}/>}
+                    {value === 'dashboard' && (
+                        <RegulatorMain selectedRegulator={selectedRegulator} selectedMonth={selectedMonth} />
+                    )}
+                    {value === 'metrics' && (
+                        <MetricsTab
+                            metrics={metrics}
+                            selectedRegulator={selectedRegulator}
+                            selectedMonth={selectedMonth}
+                        />
+                    )}
                 </p>
                 {value === 'users' && <OperatorUserManagement />}
             </div>
@@ -259,6 +281,85 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
 
                                                 {months.map(month => (
                                                     <SelectItem key={month.value} value={month.value}>
+                                                        {month.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Filters - Only show for regulator mode */}
+                            {mode === 'regulator' && (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1 lg:justify-end">
+                                    {/* Regulator Filter */}
+                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                        <Label
+                                            htmlFor="regulator-filter"
+                                            className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+                                        >
+                                            <Landmark className="size-4 text-purple-600" />
+                                            Regulator
+                                        </Label>
+                                        <Select
+                                            value={selectedRegulator}
+                                            onValueChange={setSelectedRegulator}
+                                        >
+                                            <SelectTrigger
+                                                id="regulator-filter"
+                                                className="w-full sm:w-[220px] border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                            >
+                                                <SelectValue placeholder="Loading regulators..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                        <span className="font-medium">
+                            All Regulators
+                        </span>
+                                                </SelectItem>
+                                                {regulators.map((reg) => (
+                                                    <SelectItem
+                                                        key={reg.regulator_id}
+                                                        value={reg.regulator_id.toString()}
+                                                    >
+                                                        {reg.regulator_name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Month Filter */}
+                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                        <Label
+                                            htmlFor="regulator-month-filter"
+                                            className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+                                        >
+                                            <Calendar className="size-4 text-purple-600" />
+                                            Month
+                                        </Label>
+                                        <Select
+                                            value={selectedMonth}
+                                            onValueChange={setSelectedMonth}
+                                        >
+                                            <SelectTrigger
+                                                id="regulator-month-filter"
+                                                className="w-full sm:w-[200px] border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                            >
+                                                <SelectValue placeholder="All Months" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                        <span className="font-medium">
+                            All Months
+                        </span>
+                                                </SelectItem>
+                                                {months.map((month) => (
+                                                    <SelectItem
+                                                        key={month.value}
+                                                        value={month.value}
+                                                    >
                                                         {month.label}
                                                     </SelectItem>
                                                 ))}
