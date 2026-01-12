@@ -362,6 +362,18 @@ export const reportsAPI = {
             console.error("failed to fetch regulator reports");
         }
         return response.json();
+    },
+
+    async getRegulatorSubmissionData() {
+        const response = await fetch(`${BASE_URL}/api/v1/regulator-report/submissions`, {
+            method: 'GET',
+            headers: getAuthHeader(),
+        });
+
+        if (!response.ok) {
+            console.error("failed to fetch regulator submission data");
+        }
+        return response.json();
     }
 };
 

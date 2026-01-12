@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { KpiCard } from './KpiCard';
 import { ReportInstructionsDialog } from './ReportInstructionDialog';
+import {jwtDecode} from 'jwt-decode';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -23,7 +24,7 @@ interface RegulatorSubmission {
     fileName: string;
     fileUrl: string;
     submittedAt: string;
-    status: 'pending' | 'approved' | 'rejected';
+    status: 'online' | 'offline';
     reviewNotes?: string;
 }
 
@@ -42,6 +43,14 @@ interface UniqueRegulatorUser {
     regulator_id: number;
 }
 
+interface DecodedToken {
+    user_id: number;
+    regulator_id: number | null;
+    operator_id: number | null;
+    roles: string[];
+    exp: number;
+}
+
 export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +58,8 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [showInstructions, setShowInstructions] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [uniqueOperators, setUniqueOperators] = useState<UniqueRegulatorUser[]>([]);
+    const [regulatorId, setRegulatorId] = useState<number | null>(null);
+    const [decoded, setDecoded] = useState<DecodedToken | null>(null);
 
     // Form state
     const [file, setFile] = useState<File | null>(null);
@@ -57,10 +68,24 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [submissionType, setSubmissionType] = useState<'online' | 'offline'>('online');
 
     useEffect(() => {
-        // loadUser();
-        loadSubmissions();
-        loadUniqueOperators();
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            const decodedToken = jwtDecode<DecodedToken>(token);
+            setDecoded(decodedToken);
+            setRegulatorId(decodedToken.regulator_id);
+        } catch (err) {
+            console.error('Invalid token', err);
+        }
     }, []);
+
+    useEffect(() => {
+        if (!regulatorId) return;
+
+        loadSubmissions(regulatorId);
+        loadUniqueOperators(regulatorId);
+    }, [regulatorId]);
 
     // const loadUser = async () => {
     //     try {
@@ -71,15 +96,17 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     //     }
     // };
 
-    async function loadUniqueOperators() {
+    async function loadUniqueOperators(regulatorId: number) {
         try {
-            // Get all users and filter for operators associated with this regulator
             const users = await managementAPI.getUsers();
 
-            // Filter users who have regulator role and same regulator_id
-            const regulatorUsers = users.filter((u: any) =>
-                u.roles?.includes('regulator') || u.roles?.some((r: any) => r.name === 'regulator')
-            );
+            const regulatorUsers = users.filter((u: any) => {
+                const hasRegulatorRole =
+                    u.roles?.includes('regulator') ||
+                    u.roles?.some((r: any) => r.name === 'regulator');
+
+                return hasRegulatorRole && u.regulator_id === regulatorId;
+            });
 
             setUniqueOperators(regulatorUsers as UniqueRegulatorUser[]);
         } catch (error) {
@@ -88,12 +115,17 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         }
     }
 
-    const loadSubmissions = async () => {
+    const loadSubmissions = async (regulatorId: number) => {
         setIsLoading(true);
         try {
-            // TODO: Implement API call to fetch regulator submissions
-            // For now, using mock data
-            setSubmissions([]);
+            const submissions = await reportsAPI.getRegulatorSubmissionData();
+
+            const filtered = submissions?.filter(
+                (s: RegulatorSubmission) =>
+                    Number(s.regulatorId) === regulatorId
+            );
+
+            setSubmissions(filtered ?? []);
         } catch (error) {
             console.error('Failed to load submissions:', error);
         } finally {
@@ -126,12 +158,14 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         setIsSubmitting(true);
 
         try {
-            const response = reportsAPI.submitMetrics(month, submissionType, file);
+            const response = await reportsAPI.submitMetrics(month, submissionType, file);
             if (response !== null) {
                 alert(`Report for ${month} (${submissionType}) submitted successfully!`);
                 setShowSubmissionForm(false);
                 resetForm();
-                loadSubmissions();
+                if (regulatorId !== null) {
+                    loadSubmissions(regulatorId);
+                }
             }
         } catch (error: any) {
             console.error('Failed to submit:', error);

@@ -60,10 +60,59 @@ export function OperatorUserManagement() {
         email: '',
         full_name: '',
         password: '',
-        operator_id: '',
-        regulator_id: '',
-        roles: ['operator']
+        operator_id: null as number | null,
+        regulator_id: null as number | null,
+        roles: ['operator'],
     });
+
+    const handleRegulatorChange = (value: string) => {
+        if (value === 'none') {
+            setUserForm((prev) => ({
+                ...prev,
+                regulator_id: null,
+                roles: deriveRoles(prev.operator_id, null),
+            }));
+            return;
+        }
+
+        const regulatorId = Number(value);
+
+        setUserForm((prev) => ({
+            ...prev,
+            regulator_id: regulatorId,
+            operator_id: null,
+            roles: deriveRoles(null, regulatorId),
+        }));
+    };
+
+    const handleOperatorChange = (value: string) => {
+        if (value === 'none') {
+            setUserForm((prev) => ({
+                ...prev,
+                operator_id: null,
+                roles: deriveRoles(null, prev.regulator_id),
+            }));
+            return;
+        }
+
+        const operatorId = Number(value);
+
+        setUserForm((prev) => ({
+            ...prev,
+            operator_id: operatorId,
+            regulator_id: null,
+            roles: deriveRoles(operatorId, null),
+        }));
+    };
+
+    const deriveRoles = (
+        operatorId: number | null,
+        regulatorId: number | null
+    ): string[] => {
+        if (regulatorId) return ['regulator'];
+        if (operatorId) return ['operator'];
+        return ['admin'];
+    };
 
     useEffect(() => {
         loadData();
@@ -107,16 +156,17 @@ export function OperatorUserManagement() {
 
     const openEditUserDialog = (user: User) => {
         setEditingUser(user);
+
         setUserForm({
             email: user.email,
             full_name: user.full_name,
             password: '',
-            operator_id: user.operator_id ? String(user.operator_id) : 'none',
-            regulator_id: user ? String(user.operator_id) : 'none',
-            roles: user.roles?.length
-                ? user.roles.map((r: any) => r.name)
-                : ['operator']
+            operator_id: user.operator_id ?? null,
+            regulator_id: user.regulator_id ?? null,
+            roles: deriveRoles(user.operator_id, user.regulator_id),
         });
+
+        setShowUserDialog(true);
     };
 
     const closeUserDialog = () => {
@@ -579,7 +629,7 @@ export function OperatorUserManagement() {
                             <tr className="border-b">
                                 <th className="text-left py-3 px-4">ID</th>
                                 <th className="text-left py-3 px-4">User</th>
-                                <th className="text-left py-3 px-4">Operator</th>
+                                <th className="text-left py-3 px-4">Operator / Regulator</th>
                                 <th className="text-left py-3 px-4">Role</th>
                                 <th className="text-left py-3 px-4">Status</th>
                                 <th className="text-left py-3 px-4">Created</th>
@@ -857,15 +907,20 @@ export function OperatorUserManagement() {
                             <div className="space-y-2">
                                 <Label htmlFor="regulator_id">Regulator *</Label>
                                 <Select
-                                    value={userForm.regulator_id}
-                                    onValueChange={(value) =>
-                                        setUserForm({ ...userForm, regulator_id: value })
+                                    value={userForm.regulator_id !== null
+                                        ? String(userForm.regulator_id)
+                                        : 'none'}
+                                    onValueChange={handleRegulatorChange}
+                                    disabled={
+                                        userForm.roles[0] === 'admin' || !!userForm.operator_id
                                     }
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select regulator..." />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="none">No regulator</SelectItem>
+
                                         {regulators.map((reg) => (
                                             <SelectItem
                                                 key={reg.regulator_id}
@@ -881,19 +936,21 @@ export function OperatorUserManagement() {
                             <div className="space-y-2">
                                 <Label htmlFor="operator_id">Assign Operator</Label>
                                 <Select
-                                    value={userForm.operator_id ?? 'none'}
-                                    onValueChange={(value) =>
-                                        setUserForm({
-                                            ...userForm,
-                                            operator_id: value === 'none' ? null : value,
-                                        })
+                                    value={
+                                        userForm.operator_id !== null
+                                            ? String(userForm.operator_id)
+                                            : 'none'
+                                    }
+                                    onValueChange={handleOperatorChange}
+                                    disabled={
+                                        userForm.roles[0] === 'admin' || !!userForm.regulator_id
                                     }
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select operator..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="none">No operator (Admin)</SelectItem>
+                                        <SelectItem value="none">No operator</SelectItem>
                                         {operators.map((op) => (
                                             <SelectItem
                                                 key={op.operator_id}
@@ -913,16 +970,27 @@ export function OperatorUserManagement() {
                             <Select
                                 value={userForm.roles[0]}
                                 onValueChange={(value) =>
-                                    setUserForm({ ...userForm, roles: [value] })
+                                    setUserForm((prev) => ({
+                                        ...prev,
+                                        roles: [value],
+                                        operator_id: value === 'admin' ? null : prev.operator_id,
+                                        regulator_id: value === 'admin' ? null : prev.regulator_id,
+                                    }))
                                 }
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select role" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="admin">Administrator</SelectItem>
-                                    <SelectItem value="operator">Operator</SelectItem>
-                                    <SelectItem value="regulator">Regulator</SelectItem>
+
+                                    {/* Disabled – shown for clarity, not selectable */}
+                                    <SelectItem value="operator" disabled>
+                                        Operator (auto-assigned)
+                                    </SelectItem>
+                                    <SelectItem value="regulator" disabled>
+                                        Regulator (auto-assigned)
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
