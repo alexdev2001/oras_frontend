@@ -645,7 +645,18 @@ export function OperatorUserManagement() {
                                 </tr>
                             ) : (
                                 users.map((user) => {
+                                    console.log('users', user);
+                                    // Lookup operator and regulator
                                     const userOperator = operators.find(op => op.operator_id === user.operator_id);
+                                    const userRegulator = regulators.find(reg => reg.regulator_id === user.regulator_id);
+                                    const isRegulator = user.roles?.[0]?.name === 'regulator';
+
+                                    const displayName = isRegulator
+                                        ? userRegulator?.regulator_name || 'No regulator'
+                                        : userOperator?.operator_name || 'No operator';
+
+                                    const DisplayIcon = isRegulator ? Globe : Building2;
+                                    
                                     return (
                                         <tr key={user.user_id} className="border-b hover:bg-gray-50">
                                             <td className="py-3 px-4 font-medium">#{user.user_id}</td>
@@ -659,19 +670,17 @@ export function OperatorUserManagement() {
                                                 </div>
                                             </td>
                                             <td className="py-3 px-4">
-                                                {userOperator ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <Building2 className="size-4 text-indigo-600" />
-                                                        <span className="text-sm">{userOperator.operator_name}</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm text-gray-400">No operator</span>
-                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    <DisplayIcon className="size-4 text-indigo-600" />
+                                                    <span className="text-sm">{displayName}</span>
+                                                </div>
                                             </td>
                                             <td className="py-3 px-4">
                                                 <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                                                     <Shield className="size-3" />
-                                                    {user.roles?.[0]?.name || 'operator'}
+                                                    {typeof user.roles?.[0] === 'string'
+                                                        ? user.roles[0]
+                                                        : user.roles?.[0]?.name || 'operator'}
                                                 </Badge>
                                             </td>
                                             <td className="py-3 px-4">
