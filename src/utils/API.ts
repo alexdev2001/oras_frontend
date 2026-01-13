@@ -374,6 +374,21 @@ export const reportsAPI = {
             console.error("failed to fetch regulator submission data");
         }
         return response.json();
+    },
+
+    async getRegulatorSubmitFile(reportId: number):  Promise<Blob> {
+        const response = await fetch(`${BASE_URL}/api/v1/regulator-report/${reportId}/download`, {
+            method: 'GET',
+            headers: getAuthHeader(),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Downloading report file failed:', error);
+            throw new Error(error.error || 'Failed to download report file');
+        }
+
+        return response.blob();
     }
 };
 
@@ -413,6 +428,26 @@ export const analyticsAPI = {
         });
 
         if (!response.ok) throw new Error("Failed to fetch data quality");
+        return response.json();
+    },
+
+    async getRegulatorAnalytics(regulatorId: number) {
+        const response = await fetch(`${BASE_URL}/api/v1/regulator-metrics/${regulatorId}/analytics`, {
+            method: 'GET',
+            headers: getAuthHeader()
+        });
+
+        if (!response.ok) throw new Error("failed to fetch regulator metrics");
+        return response.json();
+    },
+
+    async getRegulatorAnalyticsAdmin() {
+        const response = await fetch(`${BASE_URL}/api/v1/regulator-report/analytics`, {
+            method: 'GET',
+            headers: getAuthHeader()
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch regulator metrics");
         return response.json();
     }
 };

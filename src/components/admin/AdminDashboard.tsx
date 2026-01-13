@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, BarChart3, FileCheck, Users, Database, FileText, Filter, Building2, Menu, X, Landmark, Calendar } from 'lucide-react';
+import {
+    LogOut,
+    BarChart3,
+    FileCheck,
+    Users,
+    Database,
+    FileText,
+    Filter,
+    Building2,
+    Menu,
+    X,
+    Landmark,
+    Calendar,
+    Grid
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnalyticsOverview } from './tabs/AnalyticsOverview.tsx';
 import { ReconciliationView } from './tabs/ReconciliationView.tsx';
@@ -15,6 +29,7 @@ import {RegulatorMain} from "@/components/admin/tabs/regulator/RegulatorMain.tsx
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import type {RegulatorMetric} from "@/types/regulator-metrics.ts";
 import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
+import {AdminRegulatorDataTables} from "@/components/admin/AdminRegulatorDataTables.tsx";
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -41,7 +56,7 @@ const operatorTabs = [
 ];
 
 const regulatorTabs = [
-    { value: 'dashboard', label: 'Dashboard', icon: Building2 },
+    { value: 'dashboard', label: 'Overview', icon: Grid },
     { value: 'metrics', label: 'Metrics', icon: BarChart3 },
     { value: 'users', label: 'User Management', icon: Users },
 ];
@@ -134,7 +149,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             <div className="text-center ">
                 <p className="text-gray-600">
                     {value === 'dashboard' && (
-                        <RegulatorMain selectedRegulator={selectedRegulator} selectedMonth={selectedMonth} />
+                        <AdminRegulatorDataTables/>
                     )}
                     {value === 'metrics' && (
                         <MetricsTab

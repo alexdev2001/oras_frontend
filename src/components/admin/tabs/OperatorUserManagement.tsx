@@ -656,7 +656,7 @@ export function OperatorUserManagement() {
                                         : userOperator?.operator_name || 'No operator';
 
                                     const DisplayIcon = isRegulator ? Globe : Building2;
-                                    
+
                                     return (
                                         <tr key={user.user_id} className="border-b hover:bg-gray-50">
                                             <td className="py-3 px-4 font-medium">#{user.user_id}</td>

@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {authAPI, managementAPI, reportsAPI} from '@/utils/API.ts';
-import { Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
+import {
+    Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users,
+    Download, ArrowUpDown, Filter, BarChart3, Database
+} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { Input } from '@/components/ui/input';
@@ -10,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { KpiCard } from './KpiCard';
 import { ReportInstructionsDialog } from './ReportInstructionDialog';
 import {jwtDecode} from 'jwt-decode';
+import {RegulatorDataTables} from "@/components/admin/tabs/regulator/RegulatorDataTables.tsx";
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -67,6 +72,10 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [month, setMonth] = useState('');
     const [submissionType, setSubmissionType] = useState<'online' | 'offline'>('online');
 
+    const [filterType, setFilterType] = useState<'all' | 'online' | 'offline'>('all');
+    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+    const [activeView, setActiveView] = useState<'overview' | 'submissions' | 'analytics'>('overview');
+
     useEffect(() => {
         const token = localStorage.getItem('authToken');
         if (!token) return;
@@ -83,7 +92,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     useEffect(() => {
         if (!regulatorId) return;
 
-        loadSubmissions(regulatorId);
+        loadSubmissions();
         loadUniqueOperators(regulatorId);
     }, [regulatorId]);
 
@@ -115,23 +124,30 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         }
     }
 
-    const loadSubmissions = async (regulatorId: number) => {
+    const loadSubmissions = async () => {
         setIsLoading(true);
         try {
             const submissions = await reportsAPI.getRegulatorSubmissionData();
-
-            const filtered = submissions?.filter(
-                (s: RegulatorSubmission) =>
-                    Number(s.regulatorId) === regulatorId
-            );
-
-            setSubmissions(filtered ?? []);
+            setSubmissions(submissions);
+            console.log('submissions', submissions);
         } catch (error) {
             console.error('Failed to load submissions:', error);
         } finally {
             setIsLoading(false);
         }
     };
+
+    const filteredAndSortedSubmissions = submissions
+        .filter(submission => {
+            if (filterType === 'all') return true;
+            return submission.status === filterType;
+        })
+        .sort((a, b) => {
+            const dateA = new Date(a.submittedAt).getTime();
+            const dateB = new Date(b.submittedAt).getTime();
+            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+        });
+
 
     const handleSignOut = async () => {
         try {
@@ -164,7 +180,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 setShowSubmissionForm(false);
                 resetForm();
                 if (regulatorId !== null) {
-                    loadSubmissions(regulatorId);
+                    loadSubmissions();
                 }
             }
         } catch (error: any) {
@@ -175,6 +191,16 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         }
     };
 
+    const handleDownload = (fileUrl: string, fileName: string) => {
+        const link = document.createElement('a');
+        link.href = fileUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const resetForm = () => {
         setMonth('');
         setSubmissionType('online');
@@ -183,12 +209,27 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'approved':
-                return <Badge className="bg-green-500"><CheckCircle className="size-3 mr-1" />Approved</Badge>;
-            case 'rejected':
-                return <Badge className="bg-red-500"><XCircle className="size-3 mr-1" />Rejected</Badge>;
+            case 'online':
+                return (
+                    <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+                        <CheckCircle className="size-3" />
+                        Online
+                    </Badge>
+                );
+            case 'offline':
+                return (
+                    <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
+                        <XCircle className="size-3" />
+                        Offline
+                    </Badge>
+                );
             default:
-                return <Badge className="bg-yellow-500"><Clock className="size-3 mr-1" />Pending</Badge>;
+                return (
+                    <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
+                        <XCircle className="size-3" />
+                        Unknown
+                    </Badge>
+                );
         }
     };
 
@@ -368,172 +409,280 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             </Button>
                         </div>
                     </div>
+
+                    {/* Navigation Tabs */}
+                    <div className="flex gap-2 mt-6">
+                        {[
+                            { id: 'overview', label: 'Overview', icon: BarChart3 },
+                            { id: 'submissions', label: 'Submissions', icon: FileText },
+                            { id: 'analytics', label: 'Data Analytics', icon: Database },
+                        ].map((tab) => (
+                            <Button
+                                key={tab.id}
+                                variant={activeView === tab.id ? 'default' : 'ghost'}
+                                onClick={() => setActiveView(tab.id as any)}
+                                className={activeView === tab.id
+                                    ? 'bg-white text-indigo-600 hover:bg-white/90'
+                                    : 'text-white hover:bg-white/10'
+                                }
+                            >
+                                <tab.icon className="size-4 mr-2" />
+                                {tab.label}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
             </motion.div>
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Stats Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <KpiCard
-                        title="Licensed Users"
-                        value={uniqueOperators.length}
-                        icon={Users}
-                    />
-                    <KpiCard
-                        title="Total Submissions"
-                        value={submissions.length}
-                        icon={FileText}
-                    />
-                    <KpiCard
-                        title="Active Users"
-                        value={uniqueOperators.filter(op => op.is_active).length}
-                        icon={UserCheck}
-                        color="from-green-500 to-emerald-500"
-                    />
-                </div>
+                {/* OVERVIEW TAB */}
+                {activeView === 'overview' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {/* Stats Overview */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <KpiCard
+                                title="Licensed Users"
+                                value={uniqueOperators.length}
+                                icon={Users}
+                            />
+                            <KpiCard
+                                title="Total Submissions"
+                                value={submissions.length}
+                                icon={FileText}
+                            />
+                            <KpiCard
+                                title="Active Users"
+                                value={uniqueOperators.filter(op => op.is_active).length}
+                                icon={UserCheck}
+                                color="from-green-500 to-emerald-500"
+                            />
+                        </div>
 
-                {/* Licensed Operators */}
-                <div className="mb-10">
-                    <Card className="border border-gray-200">
-                        <CardContent className="pt-5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-gray-600">
-                                    Licensed Operators
-                                </p>
-                                <span className="text-xs text-gray-500">
-                  {uniqueOperators.length} total
-                </span>
-                            </div>
+                        {/* Licensed Operators */}
+                        <div className="mb-10">
+                            <Card className="border border-gray-200">
+                                <CardContent className="pt-5 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium text-gray-600">
+                                            Licensed Operators
+                                        </p>
+                                        <span className="text-xs text-gray-500">
+                      {uniqueOperators.length} total
+                    </span>
+                                    </div>
 
-                            {uniqueOperators.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">
-                                    <Users className="size-12 mx-auto mb-4 text-gray-400" />
-                                    <p>No licensed operators found</p>
-                                </div>
-                            ) : (
-                                <div className="flex flex-wrap gap-3">
-                                    {uniqueOperators.map((op) => {
-                                        const isActive = op.is_active;
+                                    {uniqueOperators.length === 0 ? (
+                                        <div className="text-center py-8 text-gray-500">
+                                            <Users className="size-12 mx-auto mb-4 text-gray-400" />
+                                            <p>No licensed operators found</p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-3">
+                                            {uniqueOperators.map((op) => {
+                                                const isActive = op.is_active;
 
-                                        return (
-                                            <div
-                                                key={op.user_id}
-                                                className="flex items-center gap-3 px-4 py-2 rounded-full border bg-gray-50 hover:bg-gray-100 transition"
-                                            >
-                                                {/* Icon avatar */}
-                                                <div
-                                                    className={`h-9 w-9 rounded-full flex items-center justify-center ${
-                                                        isActive
-                                                            ? 'bg-green-100 text-green-600'
-                                                            : 'bg-gray-200 text-gray-500'
-                                                    }`}
-                                                >
-                                                    <Building2 className="h-4 w-4" />
-                                                </div>
+                                                return (
+                                                    <div
+                                                        key={op.user_id}
+                                                        className="flex items-center gap-3 px-4 py-2 rounded-full border bg-gray-50 hover:bg-gray-100 transition"
+                                                    >
+                                                        {/* Icon avatar */}
+                                                        <div
+                                                            className={`h-9 w-9 rounded-full flex items-center justify-center ${
+                                                                isActive
+                                                                    ? 'bg-green-100 text-green-600'
+                                                                    : 'bg-gray-200 text-gray-500'
+                                                            }`}
+                                                        >
+                                                            <Building2 className="h-4 w-4" />
+                                                        </div>
 
-                                                {/* Operator info */}
-                                                <div className="flex flex-col leading-tight">
-                          <span className="text-sm font-medium text-gray-800 max-w-[140px] truncate">
-                            {op.full_name ?? op.email}
-                          </span>
+                                                        {/* Operator info */}
+                                                        <div className="flex flex-col leading-tight">
+                              <span className="text-sm font-medium text-gray-800 max-w-[140px] truncate">
+                                {op.full_name ?? op.email}
+                              </span>
 
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                        {isActive ? (
-                                                            <>
-                                                                <UserCheck className="h-3 w-3 text-green-500" />
-                                                                Active
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <UserX className="h-3 w-3 text-gray-400" />
-                                                                Inactive
-                                                            </>
-                                                        )}
+                                                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                                {isActive ? (
+                                                                    <>
+                                                                        <UserCheck className="h-3 w-3 text-green-500" />
+                                                                        Active
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <UserX className="h-3 w-3 text-gray-400" />
+                                                                        Inactive
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Role badge */}
+                                                        <div className="ml-2 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                                                            <ShieldCheck className="h-3 w-3" />
+                                                            Regulator
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </motion.div>
+                )}
 
-                                                {/* Role badge */}
-                                                <div className="ml-2 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                                                    <ShieldCheck className="h-3 w-3" />
-                                                    Regulator
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                {/* SUBMISSIONS TAB */}
+                {activeView === 'submissions' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {/* Submissions List */}
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle>Document Submissions</CardTitle>
+                                        <CardDescription>View and track your submitted documents</CardDescription>
+                                    </div>
+
+                                    {submissions.length > 0 && (
+                                        <div className="flex items-center gap-3">
+                                            {/* Filter by Type */}
+                                            <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                                                <SelectTrigger className="w-[140px]">
+                                                    <Filter className="size-4 mr-2" />
+                                                    <SelectValue placeholder="Filter" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Types</SelectItem>
+                                                    <SelectItem value="online">Online</SelectItem>
+                                                    <SelectItem value="offline">Offline</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+
+                                            {/* Sort by Date */}
+                                            <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+                                                <SelectTrigger className="w-[140px]">
+                                                    <ArrowUpDown className="size-4 mr-2" />
+                                                    <SelectValue placeholder="Sort" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="newest">Newest First</SelectItem>
+                                                    <SelectItem value="oldest">Oldest First</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Submissions List */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Document Submissions</CardTitle>
-                        <CardDescription>View and track your submitted documents</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="text-center py-8 text-gray-500">Loading submissions...</div>
-                        ) : submissions.length === 0 ? (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-center py-12"
-                            >
-                                <FileText className="size-12 mx-auto text-gray-400 mb-4" />
-                                <p className="text-gray-600 mb-4">No documents submitted yet</p>
-                                <Button onClick={() => setShowInstructions(true)}>
-                                    <Plus className="size-4 mr-2" />
-                                    Submit Your First Document
-                                </Button>
-                            </motion.div>
-                        ) : (
-                            <div className="space-y-4">
-                                {submissions.map((submission, index) => (
+                            </CardHeader>
+                            <CardContent>
+                                {isLoading ? (
+                                    <div className="text-center py-8 text-gray-500">Loading submissions...</div>
+                                ) : submissions.length === 0 ? (
                                     <motion.div
-                                        key={submission.id}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                        className="border rounded-lg p-4 hover:bg-gray-50 transition-all hover:shadow-md"
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="text-center py-12"
                                     >
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-medium">{submission.title}</h3>
-                                                    {getStatusBadge(submission.status)}
-                                                </div>
-                                                <p className="text-sm text-gray-500">
-                                                    Submitted {new Date(submission.submittedAt).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <p className="text-sm text-gray-600 mb-3">{submission.description}</p>
-
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <FileText className="size-4 text-gray-400" />
-                                            <span className="text-gray-600">{submission.fileName}</span>
-                                        </div>
-
-                                        {submission.reviewNotes && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                className="mt-3 p-3 bg-gray-100 rounded text-sm"
-                                            >
-                                                <p className="font-medium text-gray-700">Review Notes:</p>
-                                                <p className="text-gray-600">{submission.reviewNotes}</p>
-                                            </motion.div>
-                                        )}
+                                        <FileText className="size-12 mx-auto text-gray-400 mb-4" />
+                                        <p className="text-gray-600 mb-4">No documents submitted yet</p>
+                                        <Button onClick={() => setShowInstructions(true)}>
+                                            <Plus className="size-4 mr-2" />
+                                            Submit Your First Document
+                                        </Button>
                                     </motion.div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                ) : filteredAndSortedSubmissions.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">
+                                        No submissions match the selected filter
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {filteredAndSortedSubmissions.map((submission, index) => (
+                                            <motion.div
+                                                key={submission.id}
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: index * 0.05 }}
+                                                className="border rounded-lg p-4 hover:bg-gray-50 transition-all hover:shadow-md"
+                                            >
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h3 className="font-medium">{submission.title}</h3>
+                                                            {getStatusBadge(submission.status)}
+                                                        </div>
+                                                        <p className="text-sm text-gray-500">
+                                                            Submitted {new Date(submission.submittedAt).toLocaleDateString('en-US', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Download Button */}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handleDownload(submission.fileUrl, submission.fileName)}
+                                                        className="ml-4"
+                                                    >
+                                                        <Download className="size-4 mr-2" />
+                                                        Download
+                                                    </Button>
+                                                </div>
+
+                                                <p className="text-sm text-gray-600 mb-3">{submission.description}</p>
+
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    <FileText className="size-4 text-gray-400" />
+                                                    <span className="text-gray-600 font-medium">{submission.fileName}</span>
+                                                </div>
+
+                                                {submission.reviewNotes && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        className="mt-3 p-3 bg-gray-100 rounded text-sm"
+                                                    >
+                                                        <p className="font-medium text-gray-700">Review Notes:</p>
+                                                        <p className="text-gray-600">{submission.reviewNotes}</p>
+                                                    </motion.div>
+                                                )}
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                )}
+
+                {/* ANALYTICS TAB */}
+                {activeView === 'analytics' && regulatorId !== null && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <RegulatorDataTables regulatorId={regulatorId} />
+                    </motion.div>
+                )}
             </div>
         </div>
     );
