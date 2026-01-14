@@ -58,6 +58,7 @@ const operatorTabs = [
 const regulatorTabs = [
     { value: 'dashboard', label: 'Overview', icon: Grid },
     { value: 'metrics', label: 'Metrics', icon: BarChart3 },
+    { value: 'submissions', label: 'Submissions', icon: FileText },
     { value: 'users', label: 'User Management', icon: Users },
 ];
 
