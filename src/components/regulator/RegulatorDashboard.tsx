@@ -49,12 +49,15 @@ interface UniqueRegulatorUser {
     regulator_id: number;
 }
 
-interface DecodedToken {
+export interface DecodedToken {
     user_id: number;
+    email_notification: string;
     regulator_id: number | null;
     operator_id: number | null;
     roles: string[];
+    country?: string | null;
     exp: number;
+    iat: number;
 }
 
 interface AuthUser {
@@ -109,7 +112,6 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
     const [showInstructions, setShowInstructions] = useState(false);
-    const [user] = useState<AuthUser | null>(null);
     const [uniqueOperators, setUniqueOperators] = useState<UniqueRegulatorUser[]>([]);
     const [regulatorId, setRegulatorId] = useState<number | null>(null);
     const [decoded, setDecoded] = useState<DecodedToken | null>(null);
@@ -155,6 +157,14 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     //         console.error('Failed to load user:', error);
     //     }
     // };
+
+    const displayUser = decoded
+        ? {
+            email: decoded.email_notification,
+            country: decoded.country,
+            role: decoded.roles?.[0],
+        }
+        : null;
 
     async function loadUniqueOperators(regulatorId: number) {
         try {
@@ -496,8 +506,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                     <div className="flex items-center justify-between">
                         <div className="text-white">
                             <h1 className="text-3xl font-bold tracking-tight">Regulator Portal</h1>
-                            <p className="text-blue-100 mt-1 text-sm font-medium">{user?.user_metadata?.name || user?.email}</p>
-                            <p className="text-sm text-blue-200">{user?.user_metadata?.country || 'Country not set'}</p>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">
+                                {displayUser?.email}
+                            </p>
+
+                            <p className="text-sm text-blue-200">
+                                {displayUser?.country ?? 'Country not set'}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button

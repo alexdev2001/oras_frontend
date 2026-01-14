@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress.tsx';
 import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Label } from '@/components/ui/label.tsx';
+import { jwtDecode } from 'jwt-decode';
 
 interface OperatorUser {
     user_metadata?: {
@@ -25,9 +26,24 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
     const [reports, setReports] = useState<OperatorReport[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-    const [user] = useState<OperatorUser | null>(null);
+    const [user, setUser] = useState<{ email: string } | null>(null);
     const [activeView, setActiveView] = useState<'dashboard' | 'reports' | 'insights'>('dashboard');
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
+
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            const decoded = jwtDecode<DecodedToken>(token);
+
+            setUser({
+                email: decoded.email_notification,
+            });
+        } catch (err) {
+            console.error('Invalid token', err);
+        }
+    }, []);
 
     useEffect(() => {
         loadReports();
@@ -132,7 +148,9 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                     <div className="flex items-center justify-between">
                         <div className="text-white">
                             <h1 className="text-3xl font-bold tracking-tight">Operator Portal</h1>
-                            <p className="text-blue-100 mt-1 text-sm font-medium">{user?.user_metadata?.operatorName}</p>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">
+                                {user?.email}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button

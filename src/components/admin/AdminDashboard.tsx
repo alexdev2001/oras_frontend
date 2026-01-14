@@ -28,6 +28,8 @@ import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.ts
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
 import {AdminRegulatorDataTables} from "@/components/admin/AdminRegulatorDataTables.tsx";
+import type {DecodedToken} from "@/components/regulator/RegulatorDashboard.tsx";
+import {jwtDecode} from "jwt-decode";
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -71,6 +73,24 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [loadingOperators, setLoadingOperators] = useState(true);
     const [metrics, setMetrics] = useState<Metric[]>([]);
+
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            const decoded = jwtDecode<DecodedToken>(token);
+
+            setUser({
+                email: decoded.email_notification,
+                user_metadata: {
+                    role: decoded.roles?.[0],
+                },
+            });
+        } catch (err) {
+            console.error('Invalid token', err);
+        }
+    }, []);
 
     useEffect(() => {
         loadOperators();
