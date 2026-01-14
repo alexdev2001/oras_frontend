@@ -107,7 +107,6 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
 
             try {
                 await reportsAPI.notifyAdmins(operatorId);
-                console.log("Admin notification sent.");
             } catch (notifyErr) {
                 console.error("Failed to notify admins:", notifyErr);
             }

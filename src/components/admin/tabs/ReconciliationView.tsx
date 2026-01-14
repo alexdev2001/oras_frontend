@@ -74,11 +74,14 @@ export function ReconciliationView() {
     const loadReports = async () => {
         setIsLoading(true);
         try {
-            const   reports   = await reportsAPI.getPendingReports();
-            console.log("reports: ", reports);
-            setApprovedReports(reports.sort((a: OperatorReport, b: OperatorReport) =>
-                new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
-            ));
+            const reports = await reportsAPI.getPendingReports();
+            setApprovedReports(
+                reports.sort(
+                    (a: OperatorReport, b: OperatorReport) =>
+                        new Date(b.submittedAt).getTime() -
+                        new Date(a.submittedAt).getTime()
+                )
+            );
         } catch (error) {
             console.error('Failed to load approved reports:', error);
         } finally {
@@ -193,7 +196,6 @@ export function ReconciliationView() {
                                 onValueChange={(value) => {
                                     const report = approvedReports.find(r => r.id === value);
                                     setSelectedReport(report || null);
-                                    console.log('selectedReport ', report);
                                     setComparison(null);
                                 }}
                             >

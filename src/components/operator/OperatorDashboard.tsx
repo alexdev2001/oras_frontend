@@ -11,6 +11,12 @@ import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, C
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Label } from '@/components/ui/label.tsx';
 
+interface OperatorUser {
+    user_metadata?: {
+        operatorName?: string;
+    };
+}
+
 interface OperatorDashboardProps {
     onSignOut: () => void;
 }
@@ -19,7 +25,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
     const [reports, setReports] = useState<OperatorReport[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [user] = useState<OperatorUser | null>(null);
     const [activeView, setActiveView] = useState<'dashboard' | 'reports' | 'insights'>('dashboard');
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
@@ -231,7 +237,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                 { title: 'Avg GGR %', value: avgGGRPercentage, icon: Target, suffix: '%', decimals: 2 },
                             ].map((stat) => (
                                 <div key={stat.title}>
-                                    <Card>
+                                <Card>
                                         <CardHeader className="pb-2">
                                             <CardDescription className="flex items-center justify-between">
                                                 <span>{stat.title}</span>
@@ -454,9 +460,9 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Lightbulb className="size-5 text-yellow-600" />
-                                    Smart Insights
+                                    Insights
                                 </CardTitle>
-                                <CardDescription>AI-powered performance analysis</CardDescription>
+                                <CardDescription>Performance analysis</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">

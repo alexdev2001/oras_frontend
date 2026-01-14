@@ -43,7 +43,6 @@ export const authAPI = {
 
         if (data.access_token) {
             localStorage.setItem("authToken", data.access_token);
-            console.log("token saved", data.access_token);
         }
 
         return data;

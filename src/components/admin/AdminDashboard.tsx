@@ -25,9 +25,7 @@ import { authAPI, managementAPI, reportsAPI } from '@/utils/API.ts';
 import { Card, CardContent } from '@/components/ui/card.tsx';
 import { OperatorUserManagement } from '@/components/admin/tabs/OperatorUserManagement.tsx';
 import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.tsx';
-import {RegulatorMain} from "@/components/admin/tabs/regulator/RegulatorMain.tsx";
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
-import type {RegulatorMetric} from "@/types/regulator-metrics.ts";
 import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
 import {AdminRegulatorDataTables} from "@/components/admin/AdminRegulatorDataTables.tsx";
 
@@ -63,7 +61,7 @@ const regulatorTabs = [
 
 export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [user, setUser] = useState<User | null>(null);
-    const [mode, setMode] = useState<'operator' | 'regulator'>('operator');
+    const [mode, setMode] = useState<'operator' | 'regulator'>('regulator');
     const [activeTab, setActiveTab] = useState('overview');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [operators, setOperators] = useState<Operator[]>([]);
@@ -94,10 +92,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         setMobileMenuOpen(false);
     }, [mode]);
 
-    useEffect(() => {
-        console.log("Selected month changed:", selectedMonth);
-    }, [selectedMonth]);
-
     const loadOperators = async () => {
         try {
             setLoadingOperators(true);
@@ -113,7 +107,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const loadRegulatorMetrics = async () => {
         try {
             const metricsData = await reportsAPI.getRegulatorMetrics();
-            console.log('regulator metrics:', metricsData);
             if (metricsData) {
                 setMetrics(metricsData);
             }
@@ -187,7 +180,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     };
 
     const months = getLast12Months();
-    console.log('months', months);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
@@ -228,17 +220,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                 <Label className="text-sm font-semibold text-gray-700">View Mode</Label>
                                 <div className="inline-flex rounded-lg bg-gradient-to-r from-slate-100 to-slate-50 p-1 shadow-inner">
                                     <button
-                                        onClick={() => setMode('operator')}
-                                        className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
-                                            mode === 'operator'
-                                                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md transform scale-105'
-                                                : 'text-gray-700 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        <Building2 className="size-4 inline mr-2" />
-                                        Operator
-                                    </button>
-                                    <button
                                         onClick={() => setMode('regulator')}
                                         className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
                                             mode === 'regulator'
@@ -248,6 +229,17 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                     >
                                         <FileCheck className="size-4 inline mr-2" />
                                         Regulator
+                                    </button>
+                                    <button
+                                        onClick={() => setMode('operator')}
+                                        className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
+                                            mode === 'operator'
+                                                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md transform scale-105'
+                                                : 'text-gray-700 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        <Building2 className="size-4 inline mr-2" />
+                                        Operator
                                     </button>
                                 </div>
                             </div>

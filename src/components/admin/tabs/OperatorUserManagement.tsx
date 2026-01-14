@@ -645,10 +645,12 @@ export function OperatorUserManagement() {
                                 </tr>
                             ) : (
                                 users.map((user) => {
-                                    console.log('users', user);
-                                    // Lookup operator and regulator
-                                    const userOperator = operators.find(op => op.operator_id === user.operator_id);
-                                    const userRegulator = regulators.find(reg => reg.regulator_id === user.regulator_id);
+                                    const userOperator = operators.find(
+                                        op => op.operator_id === user.operator_id
+                                    );
+                                    const userRegulator = regulators.find(
+                                        reg => reg.regulator_id === user.regulator_id
+                                    );
                                     const isRegulator = user.roles?.[0]?.name === 'regulator';
 
                                     const displayName = isRegulator

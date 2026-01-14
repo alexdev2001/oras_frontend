@@ -1,11 +1,13 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { motion } from 'motion/react';
-import { Download, TrendingUp, TrendingDown } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
-import {analyticsAPI} from "@/utils/API.ts";
+import { analyticsAPI } from '@/utils/API.ts';
 
 interface MonthlyData {
     month: string;
@@ -23,12 +25,15 @@ interface MonthlyData {
 
 interface PerOperatorData {
     operator: string;
+    TOTAL: number;
     [key: string]: number | string;
 }
 
 interface RegulatorDataTablesProps {
     regulatorId: number;
 }
+
+type SortOrder = 'asc' | 'desc';
 
 export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
     const [monthlyOnline, setMonthlyOnline] = useState<MonthlyData[]>([]);
@@ -38,13 +43,12 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
     const [perOpOnlineGGR, setPerOpOnlineGGR] = useState<PerOperatorData[]>([]);
     const [perOpOfflineStake, setPerOpOfflineStake] = useState<PerOperatorData[]>([]);
     const [perOpOfflineGGR, setPerOpOfflineGGR] = useState<PerOperatorData[]>([]);
+    const [sortOrders, setSortOrders] = useState<{ online: SortOrder; offline: SortOrder }>({ online: 'desc', offline: 'desc' });
 
     useEffect(() => {
         let cancelled = false;
-
         (async () => {
             const analytics = await analyticsAPI.getRegulatorAnalytics(regulatorId);
-            console.log('analytics', analytics);
             if (!analytics || cancelled) return;
 
             setMonthlyOnline(analytics?.monthly?.online ?? []);
@@ -57,63 +61,50 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
             setPerOpOfflineGGR(analytics?.per_operator?.offline?.ggr ?? []);
         })();
 
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [regulatorId]);
 
     const monthNames: Record<string, string> = {
-        "01": "January",
-        "02": "February",
-        "03": "March",
-        "04": "April",
-        "05": "May",
-        "06": "June",
-        "07": "July",
-        "08": "August",
-        "09": "September",
-        "10": "October",
-        "11": "November",
-        "12": "December",
+        "01": "January","02": "February","03": "March","04": "April",
+        "05": "May","06": "June","07": "July","08": "August",
+        "09": "September","10": "October","11": "November","12": "December"
     };
 
     const allMonthKeys = Array.from(
-        new Set(
-            perOpOnlineGGR.flatMap((row) =>
-                Object.keys(row).filter((key) => key !== "operator" && key !== "TOTAL")
-            )
-        )
-    ).sort()
+        new Set([...perOpOnlineStake, ...perOpOnlineGGR, ...perOpOfflineStake, ...perOpOfflineGGR].flatMap(row =>
+            Object.keys(row).filter(k => k !== "operator" && k !== "TOTAL")
+        ))
+    ).sort();
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-MW', {
-            style: 'currency',
-            currency: 'MWK',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(value);
+    const formatCurrency = (value: number) =>
+        new Intl.NumberFormat('en-MW', { style: 'currency', currency: 'MWK', minimumFractionDigits: 0 }).format(value);
+    const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
+
+    const toggleSort = (tab: 'online' | 'offline') => {
+        setSortOrders(prev => ({ ...prev, [tab]: prev[tab] === 'desc' ? 'asc' : 'desc' }));
     };
 
-    const formatPercent = (value: number) => {
-        return `${(value * 100).toFixed(2)}%`;
-    };
+    const sortByTotal = (rows: PerOperatorData[], tab: 'online' | 'offline') =>
+        [...rows].sort((a, b) =>
+            sortOrders[tab] === 'desc'
+                ? (b.TOTAL as number) - (a.TOTAL as number)
+                : (a.TOTAL as number) - (b.TOTAL as number)
+        );
 
     const handleDownloadExcel = () => {
-        // TODO: Implement Excel download from backend
         alert('Excel download will be implemented with backend integration');
     };
 
     return (
         <div className="space-y-6">
-            {/* Header with Download */}
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Data Analytics</h2>
                     <p className="text-sm text-gray-600">Comprehensive metrics and operator performance</p>
                 </div>
                 <Button onClick={handleDownloadExcel} className="bg-indigo-600 hover:bg-indigo-700">
-                    <Download className="size-4 mr-2" />
-                    Download Excel
+                    <Download className="size-4 mr-2" /> Download Excel
                 </Button>
             </div>
 
@@ -124,7 +115,7 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                     <TabsTrigger value="offline">Per Operator (Offline)</TabsTrigger>
                 </TabsList>
 
-                {/* MONTHLY SUMMARY TAB */}
+                {/* MONTHLY SUMMARY */}
                 <TabsContent value="monthly" className="space-y-6 mt-6">
                     {/* Online Table */}
                     <Card>
@@ -163,15 +154,7 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     </thead>
                                     <tbody>
                                     {monthlyOnline.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className={`border-b hover:bg-gray-50 transition ${
-                                                row.month === 'Total' ? 'bg-indigo-50 font-bold border-t-2 border-indigo-300' : ''
-                                            }`}
-                                        >
+                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 transition ${row.month === 'Total' ? 'bg-indigo-50 font-bold border-t-2 border-indigo-300' : ''}`}>
                                             <td className="p-3">{row.month}</td>
                                             <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
                                             <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
@@ -228,15 +211,7 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     </thead>
                                     <tbody>
                                     {monthlyOffline.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className={`border-b hover:bg-gray-50 transition ${
-                                                row.month === 'Total' ? 'bg-red-50 font-bold border-t-2 border-red-300' : ''
-                                            }`}
-                                        >
+                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 transition ${row.month === 'Total' ? 'bg-red-50 font-bold border-t-2 border-red-300' : ''}`}>
                                             <td className="p-3">{row.month}</td>
                                             <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
                                             <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
@@ -289,15 +264,7 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     </thead>
                                     <tbody>
                                     {monthlyCombined.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className={`border-b hover:bg-gray-50 transition ${
-                                                row.month === 'Total' ? 'bg-purple-50 font-bold border-t-2 border-purple-300' : ''
-                                            }`}
-                                        >
+                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 transition ${row.month === 'Total' ? 'bg-purple-50 font-bold border-t-2 border-purple-300' : ''}`}>
                                             <td className="p-3">{row.month}</td>
                                             <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
                                             <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
@@ -318,8 +285,16 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                     </Card>
                 </TabsContent>
 
-                {/* PER OPERATOR ONLINE TAB */}
+                {/* PER OPERATOR ONLINE */}
                 <TabsContent value="online" className="space-y-6 mt-6">
+                    <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => toggleSort('online')}>
+                            <ArrowUpDown className="size-4" />
+                            {sortOrders.online === 'desc' ? 'Highest → Lowest' : 'Lowest → Highest'}
+                        </Button>
+                    </div>
+
+                    {/* Stake Table */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
@@ -334,39 +309,16 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     <thead>
                                     <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200">
                                         <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-
-                                        {allMonthKeys.map((monthKey) => {
-                                            const [year, month] = monthKey.split("-");
-                                            return (
-                                                <th key={monthKey} className="text-right p-3 font-semibold text-gray-700">
-                                                    {monthNames[month] ?? monthKey}
-                                                </th>
-                                            );
-                                        })}
-
+                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
                                         <th className="text-right p-3 font-semibold text-gray-700 bg-blue-100">TOTAL</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {perOpOnlineStake.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: idx * 0.1 }}
-                                            className="border-b hover:bg-gray-50 transition"
-                                        >
+                                    {sortByTotal(perOpOnlineStake, 'online').map((row, idx) => (
+                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
                                             <td className="p-3 font-medium">{row.operator}</td>
-
-                                            {allMonthKeys.map((monthKey) => (
-                                                <td key={monthKey} className="p-3 text-right font-mono">
-                                                    {row[monthKey] !== undefined ? formatCurrency(row[monthKey] as number) : ""}
-                                                </td>
-                                            ))}
-
-                                            <td className="p-3 text-right font-mono font-bold bg-blue-50">
-                                                {formatCurrency(row.TOTAL as number)}
-                                            </td>
+                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
+                                            <td className="p-3 text-right font-mono font-bold bg-blue-50">{formatCurrency(row.TOTAL as number)}</td>
                                         </motion.tr>
                                     ))}
                                     </tbody>
@@ -390,39 +342,16 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     <thead>
                                     <tr className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
                                         <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-
-                                        {allMonthKeys.map((monthKey) => {
-                                            const [year, month] = monthKey.split("-");
-                                            return (
-                                                <th key={monthKey} className="text-right p-3 font-semibold text-gray-700">
-                                                    {monthNames[month] ?? monthKey}
-                                                </th>
-                                            );
-                                        })}
-
-                                        <th className="text-right p-3 font-semibold text-gray-700 bg-green-100">TOTAL</th>
+                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
+                                        <th className="text-right p-3 font-semibold text-green-100">TOTAL</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {perOpOnlineGGR.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: idx * 0.1 }}
-                                            className="border-b hover:bg-gray-50 transition"
-                                        >
+                                    {sortByTotal(perOpOnlineGGR, 'online').map((row, idx) => (
+                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
                                             <td className="p-3 font-medium">{row.operator}</td>
-
-                                            {allMonthKeys.map((monthKey) => (
-                                                <td key={monthKey} className="p-3 text-right font-mono text-green-700">
-                                                    {row[monthKey] !== undefined ? formatCurrency(row[monthKey] as number) : ""}
-                                                </td>
-                                            ))}
-
-                                            <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">
-                                                {formatCurrency(row.TOTAL as number)}
-                                            </td>
+                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono text-green-700">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
+                                            <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL as number)}</td>
                                         </motion.tr>
                                     ))}
                                     </tbody>
@@ -432,8 +361,15 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                     </Card>
                 </TabsContent>
 
-                {/* PER OPERATOR OFFLINE TAB */}
+                {/* PER OPERATOR OFFLINE */}
                 <TabsContent value="offline" className="space-y-6 mt-6">
+                    <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => toggleSort('offline')}>
+                            <ArrowUpDown className="size-4" />
+                            {sortOrders.offline === 'desc' ? 'Highest → Lowest' : 'Lowest → Highest'}
+                        </Button>
+                    </div>
+
                     {/* Stake Table */}
                     <Card>
                         <CardHeader>
@@ -449,41 +385,16 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     <thead>
                                     <tr className="bg-gradient-to-r from-orange-50 to-red-50 border-b-2 border-orange-200">
                                         <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-
-                                        {/* Dynamic month headers */}
-                                        {allMonthKeys.map((monthKey) => {
-                                            const [year, month] = monthKey.split("-");
-                                            return (
-                                                <th key={monthKey} className="text-right p-3 font-semibold text-gray-700">
-                                                    {monthNames[month] ?? monthKey}
-                                                </th>
-                                            );
-                                        })}
-
+                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
                                         <th className="text-right p-3 font-semibold text-gray-700 bg-orange-100">TOTAL</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {perOpOfflineStake.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: idx * 0.1 }}
-                                            className="border-b hover:bg-gray-50 transition"
-                                        >
+                                    {sortByTotal(perOpOfflineStake, 'offline').map((row, idx) => (
+                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
                                             <td className="p-3 font-medium">{row.operator}</td>
-
-                                            {/* Dynamic month values or blank */}
-                                            {allMonthKeys.map((monthKey) => (
-                                                <td key={monthKey} className="p-3 text-right font-mono">
-                                                    {row[monthKey] !== undefined ? formatCurrency(row[monthKey] as number) : ""}
-                                                </td>
-                                            ))}
-
-                                            <td className="p-3 text-right font-mono font-bold bg-orange-50">
-                                                {formatCurrency(row.TOTAL as number)}
-                                            </td>
+                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
+                                            <td className="p-3 text-right font-mono font-bold bg-orange-50">{formatCurrency(row.TOTAL as number)}</td>
                                         </motion.tr>
                                     ))}
                                     </tbody>
@@ -507,40 +418,16 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                     <thead>
                                     <tr className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
                                         <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-
-                                        {/* Dynamic month headers */}
-                                        {allMonthKeys.map((monthKey) => {
-                                            const [year, month] = monthKey.split("-");
-                                            return (
-                                                <th key={monthKey} className="text-right p-3 font-semibold text-gray-700">
-                                                    {monthNames[month] ?? monthKey}
-                                                </th>
-                                            );
-                                        })}
-
-                                        <th className="text-right p-3 font-semibold text-gray-700 bg-green-100">TOTAL</th>
+                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
+                                        <th className="text-right p-3 font-semibold text-green-100">TOTAL</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {perOpOfflineGGR.map((row, idx) => (
-                                        <motion.tr
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: idx * 0.1 }}
-                                            className="border-b hover:bg-gray-50 transition"
-                                        >
+                                    {sortByTotal(perOpOfflineGGR, 'offline').map((row, idx) => (
+                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
                                             <td className="p-3 font-medium">{row.operator}</td>
-
-                                            {allMonthKeys.map((monthKey) => (
-                                                <td key={monthKey} className="p-3 text-right font-mono text-green-700">
-                                                    {row[monthKey] !== undefined ? formatCurrency(row[monthKey] as number) : ""}
-                                                </td>
-                                            ))}
-
-                                            <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">
-                                                {formatCurrency(row.TOTAL as number)}
-                                            </td>
+                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono text-green-700">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
+                                            <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL as number)}</td>
                                         </motion.tr>
                                     ))}
                                     </tbody>

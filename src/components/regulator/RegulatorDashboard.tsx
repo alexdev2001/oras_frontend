@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {authAPI, managementAPI, reportsAPI} from '@/utils/API.ts';
+import {authAPI, managementAPI, reportsAPI, analyticsAPI} from '@/utils/API.ts';
 import {
     Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users,
     Download, ArrowUpDown, Filter, BarChart3, Database
@@ -15,6 +15,7 @@ import { KpiCard } from './KpiCard';
 import { ReportInstructionsDialog } from './ReportInstructionDialog';
 import {jwtDecode} from 'jwt-decode';
 import {RegulatorDataTables} from "@/components/admin/tabs/regulator/RegulatorDataTables.tsx";
+import {ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar} from 'recharts';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -56,15 +57,64 @@ interface DecodedToken {
     exp: number;
 }
 
+interface AuthUser {
+    email?: string;
+    user_metadata?: {
+        name?: string;
+        country?: string;
+    };
+}
+
+interface MonthlyData {
+    month: string;
+    stake: number;
+    payout: number;
+    cancelled: number;
+    open_tickets: number;
+    ggr: number;
+    ggr_pct: number;
+    percent_from_stake: number;
+    percent_from_ggr: number;
+    igj: number;
+    fugogo: number;
+}
+
+interface PerOperatorData {
+    operator: string;
+    TOTAL: number;
+    [key: string]: number | string;
+}
+
+interface RegulatorAnalytics {
+    regulator_name: string;
+    monthly: {
+        online: MonthlyData[];
+        offline: MonthlyData[];
+        combined: MonthlyData[];
+    };
+    per_operator: {
+        online: {
+            stake: PerOperatorData[];
+            ggr: PerOperatorData[];
+        };
+        offline: {
+            stake: PerOperatorData[];
+            ggr: PerOperatorData[];
+        };
+    };
+}
+
 export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
     const [showInstructions, setShowInstructions] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [user] = useState<AuthUser | null>(null);
     const [uniqueOperators, setUniqueOperators] = useState<UniqueRegulatorUser[]>([]);
     const [regulatorId, setRegulatorId] = useState<number | null>(null);
     const [decoded, setDecoded] = useState<DecodedToken | null>(null);
+    const [analytics, setAnalytics] = useState<RegulatorAnalytics | null>(null);
+    const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
 
     // Form state
     const [file, setFile] = useState<File | null>(null);
@@ -94,6 +144,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
         loadSubmissions();
         loadUniqueOperators(regulatorId);
+        loadAnalytics(regulatorId);
     }, [regulatorId]);
 
     // const loadUser = async () => {
@@ -127,13 +178,30 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const loadSubmissions = async () => {
         setIsLoading(true);
         try {
-            const submissions = await reportsAPI.getRegulatorSubmissionData();
-            setSubmissions(submissions);
-            console.log('submissions', submissions);
+            const allSubmissions = await reportsAPI.getRegulatorSubmissionData();
+            const scoped = regulatorId
+                ? (allSubmissions as RegulatorSubmission[]).filter(
+                    (submission) => Number(submission.regulatorId) === regulatorId
+                )
+                : allSubmissions;
+            setSubmissions(scoped as RegulatorSubmission[]);
         } catch (error) {
             console.error('Failed to load submissions:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const loadAnalytics = async (currentRegulatorId: number) => {
+        setIsAnalyticsLoading(true);
+        try {
+            const data = await analyticsAPI.getRegulatorAnalytics(currentRegulatorId);
+            setAnalytics(data as RegulatorAnalytics);
+        } catch (error) {
+            console.error('Failed to load regulator analytics:', error);
+            setAnalytics(null);
+        } finally {
+            setIsAnalyticsLoading(false);
         }
     };
 
@@ -232,6 +300,49 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 );
         }
     };
+
+    const combinedMonthly = analytics?.monthly?.combined ?? [];
+    const totalStake = combinedMonthly.reduce((sum, row) => sum + (row.stake || 0), 0);
+    const totalGgr = combinedMonthly.reduce((sum, row) => sum + (row.ggr || 0), 0);
+    const avgGgrPct = combinedMonthly.length
+        ? combinedMonthly.reduce((sum, row) => sum + (row.ggr_pct || 0), 0) / combinedMonthly.length
+        : 0;
+
+    const monthlyTrendData = combinedMonthly.map((row) => ({
+        month: row.month,
+        stake: row.stake,
+        ggr: row.ggr,
+    }));
+
+    const onlineGgrRows = analytics?.per_operator?.online?.ggr ?? [];
+    const offlineGgrRows = analytics?.per_operator?.offline?.ggr ?? [];
+    const operatorTotalsMap = new Map<string, number>();
+
+    onlineGgrRows.forEach((row) => {
+        operatorTotalsMap.set(
+            row.operator,
+            (operatorTotalsMap.get(row.operator) || 0) + (row.TOTAL || 0),
+        );
+    });
+
+    offlineGgrRows.forEach((row) => {
+        operatorTotalsMap.set(
+            row.operator,
+            (operatorTotalsMap.get(row.operator) || 0) + (row.TOTAL || 0),
+        );
+    });
+
+    const topOperators = Array.from(operatorTotalsMap.entries())
+        .map(([operator, ggrTotal]) => ({ operator, ggrTotal }))
+        .sort((a, b) => b.ggrTotal - a.ggrTotal)
+        .slice(0, 5);
+
+    function formatNumberShort(value: number) {
+        if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + 'B';
+        if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+        if (value >= 1_000) return (value / 1_000).toFixed(1) + 'K';
+        return value.toString();
+    }
 
     if (showSubmissionForm) {
         return (
@@ -464,6 +575,148 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             />
                         </div>
 
+                        {/* Analytics Overview for this Regulator */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <BarChart3 className="size-5 text-indigo-600" />
+                                        Monthly Performance
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Combined online and offline performance for this regulator
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isAnalyticsLoading ? (
+                                        <div className="h-[240px] flex items-center justify-center text-gray-500">
+                                            Loading analytics...
+                                        </div>
+                                    ) : monthlyTrendData.length === 0 ? (
+                                        <div className="h-[240px] flex items-center justify-center text-gray-400">
+                                            No analytics data available yet
+                                        </div>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height={240}>
+                                            <AreaChart data={monthlyTrendData} margin={{ top: 40, right: 30, left: 0, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="regStake" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="regGgr" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                                                <XAxis dataKey="month" />
+                                                <YAxis
+                                                    domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.05)]}
+                                                    tickFormatter={(value) => {
+                                                        if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + 'B';
+                                                        if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+                                                        if (value >= 1_000) return (value / 1_000).toFixed(1) + 'K';
+                                                        return value.toString();
+                                                    }}
+                                                    width={60}
+                                                />
+                                                <Tooltip
+                                                    formatter={(value: number) => `MWK ${value.toLocaleString('en-US')}`}
+                                                    contentStyle={{
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #e5e7eb',
+                                                    }}
+                                                />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="stake"
+                                                    name="Stake"
+                                                    stroke="#4f46e5"
+                                                    fill="url(#regStake)"
+                                                    label={false}
+                                                />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="ggr"
+                                                    name="GGR"
+                                                    stroke="#22c55e"
+                                                    fill="url(#regGgr)"
+                                                    label={({ x, y, value }) => {
+                                                        if (!value) return null;
+                                                        return (
+                                                            <text
+                                                                x={x}
+                                                                y={y - 10}
+                                                                fill="#22c55e"
+                                                                fontSize={12}
+                                                                fontWeight="500"
+                                                                textAnchor="middle"
+                                                            >
+                                                                {formatNumberShort(value)}
+                                                            </text>
+                                                        );
+                                                    }}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Users className="size-5 text-indigo-600" />
+                                        Top Operators by GGR
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Highest contributing operators for this regulator
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isAnalyticsLoading ? (
+                                        <div className="h-[240px] flex items-center justify-center text-gray-500">
+                                            Loading analytics...
+                                        </div>
+                                    ) : topOperators.length === 0 ? (
+                                        <div className="h-[240px] flex items-center justify-center text-gray-400">
+                                            No operator analytics available
+                                        </div>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height={240}>
+                                            <BarChart
+                                                data={topOperators}
+                                                margin={{ left: 20, right: 20, top: 10, bottom: 10 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                                                <XAxis dataKey="operator" />
+                                                <YAxis
+                                                    tickFormatter={(value) => {
+                                                        if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + 'B';
+                                                        if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+                                                        if (value >= 1_000) return (value / 1_000).toFixed(1) + 'K';
+                                                        return value.toString();
+                                                    }}
+                                                    width={60}
+                                                />
+                                                <Tooltip
+                                                    formatter={(value: number) =>
+                                                        `MWK ${value.toLocaleString('en-US')}`
+                                                    }
+                                                    contentStyle={{
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #e5e7eb',
+                                                    }}
+                                                />
+                                                <Bar dataKey="ggrTotal" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+
                         {/* Licensed Operators */}
                         <div className="mb-10">
                             <Card className="border border-gray-200">
@@ -548,6 +801,48 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
                     >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            {[
+                                {
+                                    label: 'Total Submissions',
+                                    value: submissions.length,
+                                    color: 'from-indigo-500 to-blue-500',
+                                    icon: FileText,
+                                },
+                                {
+                                    label: 'Online',
+                                    value: submissions.filter(s => s.status === 'online').length,
+                                    color: 'from-green-500 to-emerald-500',
+                                    icon: CheckCircle,
+                                },
+                                {
+                                    label: 'Offline',
+                                    value: submissions.filter(s => s.status === 'offline').length,
+                                    color: 'from-amber-500 to-orange-500',
+                                    icon: Clock,
+                                },
+                            ].map((stat) => (
+                                <Card key={stat.label} className="overflow-hidden border-0 shadow-md">
+                                    <div className={`h-1.5 bg-gradient-to-r ${stat.color}`} />
+                                    <CardContent className="pt-4 pb-5">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-wide text-gray-500">
+                                                    {stat.label}
+                                                </p>
+                                                <p className="text-3xl font-semibold mt-1">
+                                                    {stat.value}
+                                                </p>
+                                            </div>
+                                            <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                                                <stat.icon className="size-5 text-slate-500" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+
                         {/* Submissions List */}
                         <Card>
                             <CardHeader>
