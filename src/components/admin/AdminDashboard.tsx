@@ -28,8 +28,9 @@ import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.ts
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
 import {AdminRegulatorDataTables} from "@/components/admin/AdminRegulatorDataTables.tsx";
-import type {DecodedToken} from "@/components/regulator/RegulatorDashboard.tsx";
+import type {DecodedToken, RegulatorSubmission} from "@/components/regulator/RegulatorDashboard.tsx";
 import {jwtDecode} from "jwt-decode";
+import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/RegulatorSubmissions.tsx";
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -74,6 +75,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [loadingOperators, setLoadingOperators] = useState(true);
     const [metrics, setMetrics] = useState<Metric[]>([]);
+    const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -97,6 +99,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         loadOperators();
         loadRegulators();
         loadRegulatorMetrics();
+        loadSubmissions();
     }, []);
     const loadRegulators = async () => {
         try {
@@ -106,6 +109,15 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             console.error('Failed to load regulators:', error);
         }
     };
+
+    const loadSubmissions = async () => {
+        try {
+            const submissionsData = await reportsAPI.getRegulatorSubmissionData();
+            setSubmissions(submissionsData);
+        } catch (e) {
+            console.error('Failed to load submissions:', e);
+        }
+    }
 
     useEffect(() => {
         // Reset active tab when mode changes
@@ -171,6 +183,9 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             selectedRegulator={selectedRegulator}
                             selectedMonth={selectedMonth}
                         />
+                    )}
+                    {value === 'submissions' && (
+                        <AdminRegulatorSubmissions submissions={submissions}/>
                     )}
                 </p>
                 {value === 'users' && <OperatorUserManagement />}
