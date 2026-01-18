@@ -27,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { reportsAPI } from "@/utils/API.ts";
 
 import { FilePreview } from '@/components/regulator/FilePreview';
 import type { RegulatorSubmission } from '@/components/regulator/RegulatorDashboard';
@@ -81,14 +82,24 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
 
     /* -------------------- DOWNLOAD -------------------- */
 
-    const downloadFile = (url: string, fileName: string) => {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const downloadFile = async (reportId: number, fileName: string) => {
+        console.log('triggered')
+        try {
+            const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
+
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to download file', err);
+        }
     };
 
     /* -------------------- BADGES -------------------- */
@@ -258,7 +269,7 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
                                                         variant="outline"
                                                         onClick={() =>
                                                             downloadFile(
-                                                                submission.fileUrl,
+                                                                Number(submission.id),
                                                                 submission.fileName
                                                             )
                                                         }

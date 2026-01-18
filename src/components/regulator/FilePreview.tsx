@@ -66,17 +66,6 @@ export function FilePreview({
                     </div>
                 </div>
 
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                        const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
-                        const url = URL.createObjectURL(blob);
-                        window.open(url, '_blank');
-                    }}
-                >
-                    Open
-                </Button>
             </div>
 
             {loading ? (

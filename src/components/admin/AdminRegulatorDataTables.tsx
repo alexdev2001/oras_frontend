@@ -83,6 +83,15 @@ export function AdminRegulatorDataTables() {
         return () => { cancelled = true; };
     }, []);
 
+    function NoDataState({ message }: { message: string }) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500 w-full border border-dashed rounded-lg bg-gray-50">
+                <TrendingDown className="size-8 mb-3 text-gray-400" />
+                <p className="text-sm font-medium">{message}</p>
+            </div>
+        );
+    }
+
     const toggleRegulator = (idx: number) => {
         setExpanded(prev => ({ ...prev, [idx]: !prev[idx] }));
         setActiveTabs(prev => ({ ...prev, [idx]: prev[idx] ?? 'monthly' }));
@@ -116,6 +125,50 @@ export function AdminRegulatorDataTables() {
                 ? (b.TOTAL as number) - (a.TOTAL as number)
                 : (a.TOTAL as number) - (b.TOTAL as number)
         );
+
+    if (analytics.length === 0) {
+        return (
+            <NoDataState message="No regulator analytics data available." />
+        );
+    }
+
+    function mergeOperatorMetrics(
+        stakeRows: PerOperatorData[],
+        ggrRows: PerOperatorData[],
+        monthKeys: string[]
+    ) {
+        const ggrMap = new Map(
+            ggrRows.map(r => [r.operator, r])
+        );
+
+        return stakeRows.map(stakeRow => {
+            const ggrRow = ggrMap.get(stakeRow.operator);
+            const merged: PerOperatorData = {
+                operator: stakeRow.operator,
+                TOTAL: stakeRow.TOTAL as number,
+            };
+
+            monthKeys.forEach(m => {
+                const stake = Number(stakeRow[m] ?? 0);
+                const ggr = Number(ggrRow?.[m] ?? 0);
+
+                merged[`${m}_stake`] = stake;
+                merged[`${m}_ggr`] = ggr;
+                merged[`${m}_payout`] = stake - ggr;
+                merged[`${m}_ggr_pct`] = stake > 0 ? ggr / stake : 0;
+            });
+
+            merged.TOTAL_PAYOUT =
+                (stakeRow.TOTAL as number) - (ggrRow?.TOTAL as number ?? 0);
+
+            merged.TOTAL_GGR_PCT =
+                stakeRow.TOTAL > 0
+                    ? (ggrRow?.TOTAL as number ?? 0) / stakeRow.TOTAL
+                    : 0;
+
+            return merged;
+        });
+    }
 
     return (
         <div className="space-y-8">
@@ -209,21 +262,39 @@ export function AdminRegulatorDataTables() {
                                                                     </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                    {rows.map((row, idx) => (
-                                                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 ${row.month === 'Total' ? `font-bold border-t-2 ${totalClass}` : ''}`}>
-                                                                            <td className="p-3">{row.month}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatCurrency(row.cancelled)}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatCurrency(row.open_tickets)}</td>
-                                                                            <td className="p-3 text-right font-mono text-green-700 font-semibold">{formatCurrency(row.ggr)}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatPercent(row.ggr_pct)}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_stake)}</td>
-                                                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_ggr)}</td>
-                                                                            <td className="p-3 text-right font-mono text-blue-700">{formatCurrency(row.igj)}</td>
-                                                                            <td className="p-3 text-right font-mono text-purple-700">{formatCurrency(row.fugogo)}</td>
-                                                                        </motion.tr>
-                                                                    ))}
+                                                                    {rows.length === 0 ? (
+                                                                        <tr>
+                                                                            <td colSpan={11} className="p-6">
+                                                                                <NoDataState message={`No ${type} monthly data available.`} />
+                                                                            </td>
+                                                                        </tr>
+                                                                    ) : (
+                                                                        rows.map((row, idx) => (
+                                                                            <motion.tr
+                                                                                key={idx}
+                                                                                initial={{ opacity: 0, y: 10 }}
+                                                                                animate={{ opacity: 1, y: 0 }}
+                                                                                transition={{ delay: idx * 0.05 }}
+                                                                                className={`border-b hover:bg-gray-50 ${
+                                                                                    row.month === 'Total'
+                                                                                        ? `font-bold border-t-2 ${totalClass}`
+                                                                                        : ''
+                                                                                }`}
+                                                                            >
+                                                                                <td className="p-3">{row.month}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatCurrency(row.cancelled)}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatCurrency(row.open_tickets)}</td>
+                                                                                <td className="p-3 text-right font-mono text-green-700 font-semibold">{formatCurrency(row.ggr)}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatPercent(row.ggr_pct)}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_stake)}</td>
+                                                                                <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_ggr)}</td>
+                                                                                <td className="p-3 text-right font-mono text-blue-700">{formatCurrency(row.igj)}</td>
+                                                                                <td className="p-3 text-right font-mono text-purple-700">{formatCurrency(row.fugogo)}</td>
+                                                                            </motion.tr>
+                                                                        ))
+                                                                    )}
                                                                     </tbody>
                                                                 </table>
                                                             </div>
@@ -235,12 +306,21 @@ export function AdminRegulatorDataTables() {
                                             {/* PER OPERATOR */}
                                             {(['online', 'offline'] as const).map(tab => {
                                                 const stakeData = sortByTotal(
-                                                    tab === 'online' ? reg.per_operator.online.stake : reg.per_operator.offline.stake,
+                                                    tab === 'online'
+                                                        ? reg.per_operator.online.stake
+                                                        : reg.per_operator.offline.stake,
                                                     regIdx
                                                 );
-                                                const ggrData = sortByTotal(
-                                                    tab === 'online' ? reg.per_operator.online.ggr : reg.per_operator.offline.ggr,
-                                                    regIdx
+
+                                                const ggrData =
+                                                    tab === 'online'
+                                                        ? reg.per_operator.online.ggr
+                                                        : reg.per_operator.offline.ggr;
+
+                                                const mergedData = mergeOperatorMetrics(
+                                                    stakeData,
+                                                    ggrData,
+                                                    allMonthKeys
                                                 );
 
                                                 return (
@@ -277,14 +357,77 @@ export function AdminRegulatorDataTables() {
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {stakeData.map((row, idx) => (
-                                                                            <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50">
+                                                                        {stakeData.length === 0 ? (
+                                                                            <tr>
+                                                                                <td colSpan={allMonthKeys.length + 2} className="p-6">
+                                                                                    <NoDataState message="No stake data available for this regulator." />
+                                                                                </td>
+                                                                            </tr>
+                                                                        ) : (
+                                                                            stakeData.map((row, idx) => (
+                                                                                <motion.tr
+                                                                                    key={idx}
+                                                                                    initial={{ opacity: 0, x: -10 }}
+                                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                                    transition={{ delay: idx * 0.05 }}
+                                                                                    className="border-b hover:bg-gray-50"
+                                                                                >
+                                                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                                                    {allMonthKeys.map(m => (
+                                                                                        <td key={m} className="p-3 text-right font-mono">
+                                                                                            {row[m] ? formatCurrency(row[m] as number) : ''}
+                                                                                        </td>
+                                                                                    ))}
+                                                                                    <td className={`p-3 text-right font-mono font-bold ${tab === 'online' ? 'bg-blue-50' : 'bg-orange-50'}`}>
+                                                                                        {formatCurrency(row.TOTAL)}
+                                                                                    </td>
+                                                                                </motion.tr>
+                                                                            ))
+                                                                        )}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+
+                                                        <Card>
+                                                            <CardHeader>
+                                                                <CardTitle className="text-lg">
+                                                                    Payout by Operator
+                                                                    <Badge className="ml-2 bg-amber-100 text-amber-800">PAYOUT</Badge>
+                                                                </CardTitle>
+                                                            </CardHeader>
+
+                                                            <CardContent>
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full border-collapse text-sm">
+                                                                        <thead>
+                                                                        <tr className="bg-gradient-to-r from-amber-50 to-orange-50 border-b-2 border-amber-200">
+                                                                            <th className="p-3 text-left">Operator</th>
+                                                                            {allMonthKeys.map(m => (
+                                                                                <th key={m} className="p-3 text-right">
+                                                                                    {monthNames[m.split('-')[1]] ?? m}
+                                                                                </th>
+                                                                            ))}
+                                                                            <th className="p-3 text-right bg-amber-50">TOTAL</th>
+                                                                        </tr>
+                                                                        </thead>
+
+                                                                        <tbody>
+                                                                        {mergedData.map((row, idx) => (
+                                                                            <tr key={idx} className="border-b hover:bg-gray-50">
                                                                                 <td className="p-3 font-medium">{row.operator}</td>
+
                                                                                 {allMonthKeys.map(m => (
-                                                                                    <td key={m} className="p-3 text-right font-mono">{row[m] ? formatCurrency(row[m] as number) : ''}</td>
+                                                                                    <td key={m} className="p-3 text-right font-mono">
+                                                                                        {formatCurrency(row[`${m}_payout`] as number)}
+                                                                                    </td>
                                                                                 ))}
-                                                                                <td className={`p-3 text-right font-mono font-bold ${tab === 'online' ? 'bg-blue-50' : 'bg-orange-50'}`}>{formatCurrency(row.TOTAL)}</td>
-                                                                            </motion.tr>
+
+                                                                                <td className="p-3 text-right font-mono font-bold bg-amber-50">
+                                                                                    {formatCurrency(row.TOTAL_PAYOUT as number)}
+                                                                                </td>
+                                                                            </tr>
                                                                         ))}
                                                                         </tbody>
                                                                     </table>
@@ -311,14 +454,77 @@ export function AdminRegulatorDataTables() {
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {ggrData.map((row, idx) => (
-                                                                            <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50">
+                                                                        {ggrData.length === 0 ? (
+                                                                            <tr>
+                                                                                <td colSpan={allMonthKeys.length + 2} className="p-6">
+                                                                                    <NoDataState message="No GGR data available for this regulator." />
+                                                                                </td>
+                                                                            </tr>
+                                                                        ) : (
+                                                                            ggrData.map((row, idx) => (
+                                                                                <motion.tr
+                                                                                    key={idx}
+                                                                                    initial={{ opacity: 0, x: -10 }}
+                                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                                    transition={{ delay: idx * 0.05 }}
+                                                                                    className="border-b hover:bg-gray-50"
+                                                                                >
+                                                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                                                    {allMonthKeys.map(m => (
+                                                                                        <td key={m} className="p-3 text-right font-mono text-green-700">
+                                                                                            {row[m] ? formatCurrency(row[m] as number) : ''}
+                                                                                        </td>
+                                                                                    ))}
+                                                                                    <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">
+                                                                                        {formatCurrency(row.TOTAL)}
+                                                                                    </td>
+                                                                                </motion.tr>
+                                                                            ))
+                                                                        )}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+
+                                                        <Card>
+                                                            <CardHeader>
+                                                                <CardTitle className="text-lg">
+                                                                    GGR % by Operator
+                                                                    <Badge className="ml-2 bg-purple-100 text-purple-800">GGR %</Badge>
+                                                                </CardTitle>
+                                                            </CardHeader>
+
+                                                            <CardContent>
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full border-collapse text-sm">
+                                                                        <thead>
+                                                                        <tr className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b-2 border-purple-200">
+                                                                            <th className="p-3 text-left">Operator</th>
+                                                                            {allMonthKeys.map(m => (
+                                                                                <th key={m} className="p-3 text-right">
+                                                                                    {monthNames[m.split('-')[1]] ?? m}
+                                                                                </th>
+                                                                            ))}
+                                                                            <th className="p-3 text-right bg-purple-50">TOTAL</th>
+                                                                        </tr>
+                                                                        </thead>
+
+                                                                        <tbody>
+                                                                        {mergedData.map((row, idx) => (
+                                                                            <tr key={idx} className="border-b hover:bg-gray-50">
                                                                                 <td className="p-3 font-medium">{row.operator}</td>
+
                                                                                 {allMonthKeys.map(m => (
-                                                                                    <td key={m} className="p-3 text-right font-mono text-green-700">{row[m] ? formatCurrency(row[m] as number) : ''}</td>
+                                                                                    <td key={m} className="p-3 text-right font-mono">
+                                                                                        {formatPercent(row[`${m}_ggr_pct`] as number)}
+                                                                                    </td>
                                                                                 ))}
-                                                                                <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL)}</td>
-                                                                            </motion.tr>
+
+                                                                                <td className="p-3 text-right font-mono font-bold bg-purple-50">
+                                                                                    {formatPercent(row.TOTAL_GGR_PCT as number)}
+                                                                                </td>
+                                                                            </tr>
                                                                         ))}
                                                                         </tbody>
                                                                     </table>

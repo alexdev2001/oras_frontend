@@ -31,6 +31,8 @@ import {AdminRegulatorDataTables} from "@/components/admin/AdminRegulatorDataTab
 import type {DecodedToken, RegulatorSubmission} from "@/components/regulator/RegulatorDashboard.tsx";
 import {jwtDecode} from "jwt-decode";
 import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/RegulatorSubmissions.tsx";
+import type { DashboardAnalytics } from '@/types/report';
+import { analyticsAPI } from '@/utils/API';
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -76,6 +78,8 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [loadingOperators, setLoadingOperators] = useState(true);
     const [metrics, setMetrics] = useState<Metric[]>([]);
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
+    const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+    const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -100,6 +104,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         loadRegulators();
         loadRegulatorMetrics();
         loadSubmissions();
+        loadAnalytics();
     }, []);
     const loadRegulators = async () => {
         try {
@@ -118,6 +123,26 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             console.error('Failed to load submissions:', e);
         }
     }
+
+    const loadAnalytics = async () => {
+        try {
+            setIsAnalyticsLoading(true);
+
+            let operatorId: number | null = null;
+
+            if (mode === 'operator' && selectedOperator !== 'all') {
+                operatorId = Number(selectedOperator);
+            }
+
+            const data = await analyticsAPI.getAnalyticsByOperatorId(operatorId);
+            setAnalytics(data);
+        } catch (error) {
+            console.error('Failed to load analytics:', error);
+            setAnalytics(null);
+        } finally {
+            setIsAnalyticsLoading(false);
+        }
+    };
 
     useEffect(() => {
         // Reset active tab when mode changes
@@ -483,7 +508,10 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             {mode === 'operator' ? (
                                 <>
                                     <TabsContent value="overview" className="mt-0">
-                                        <AnalyticsOverview selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
+                                        <AnalyticsOverview
+                                            selectedOperator={selectedOperator}
+                                            selectedMonth={selectedMonth}
+                                        />
                                     </TabsContent>
 
                                     <TabsContent value="reports" className="mt-0">

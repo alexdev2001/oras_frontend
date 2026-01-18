@@ -262,6 +262,8 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 resetForm();
                 if (regulatorId !== null) {
                     loadSubmissions();
+                    loadUniqueOperators(regulatorId);
+                    loadAnalytics(regulatorId);
                 }
             }
         } catch (error: any) {
@@ -272,14 +274,24 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         }
     };
 
-    const handleDownload = (fileUrl: string, fileName: string) => {
-        const link = document.createElement('a');
-        link.href = fileUrl;
-        link.download = fileName;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const downloadFile = async (reportId: number, fileName: string) => {
+        console.log('triggered')
+        try {
+            const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
+
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to download file', err);
+        }
     };
 
     const resetForm = () => {
@@ -961,7 +973,10 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => handleDownload(submission.fileUrl, submission.fileName)}
+                                                        onClick={() => downloadFile(
+                                                            Number(submission.id),
+                                                            submission.fileName
+                                                        )}
                                                         className="ml-4"
                                                     >
                                                         <Download className="size-4 mr-2" />

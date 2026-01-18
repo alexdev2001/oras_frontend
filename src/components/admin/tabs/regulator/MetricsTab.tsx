@@ -75,6 +75,24 @@ const formatMWKShort = (value: number) => {
    Component
 ======================= */
 
+function NoMetricsState({ message }: { message?: string }) {
+    return (
+        <div className="
+            flex flex-col items-center justify-center
+            py-12 text-center
+            text-gray-500
+            border border-dashed
+            rounded-lg
+            bg-gray-50
+        ">
+            <TrendingUp className="size-8 mb-3 text-gray-400" />
+            <p className="text-sm font-medium">
+                {message ?? "No regulator metrics available."}
+            </p>
+        </div>
+    );
+}
+
 export function MetricsTab({ metrics }: { metrics: Metric[] }) {
     const [regulatorNames, setRegulatorNames] = useState<Record<number, string>>({});
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -101,6 +119,16 @@ export function MetricsTab({ metrics }: { metrics: Metric[] }) {
         };
         if (metrics.length) loadRegulators();
     }, [metrics, metricsByRegulator]);
+
+
+
+    if (!metrics || metrics.length === 0) {
+        return (
+            <div className="space-y-6">
+                <NoMetricsState />
+            </div>
+        );
+    }
 
     return (
         <TooltipProvider delayDuration={150}>

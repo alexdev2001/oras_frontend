@@ -1,12 +1,27 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+} from '@/components/ui/card.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { motion } from 'motion/react';
-import { Download, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
+import {
+    TrendingUp,
+    TrendingDown,
+    ArrowUpDown,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.tsx';
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@/components/ui/tabs.tsx';
 import { analyticsAPI } from '@/utils/API.ts';
 
 interface MonthlyData {
@@ -39,11 +54,16 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
     const [monthlyOnline, setMonthlyOnline] = useState<MonthlyData[]>([]);
     const [monthlyOffline, setMonthlyOffline] = useState<MonthlyData[]>([]);
     const [monthlyCombined, setMonthlyCombined] = useState<MonthlyData[]>([]);
+
     const [perOpOnlineStake, setPerOpOnlineStake] = useState<PerOperatorData[]>([]);
     const [perOpOnlineGGR, setPerOpOnlineGGR] = useState<PerOperatorData[]>([]);
     const [perOpOfflineStake, setPerOpOfflineStake] = useState<PerOperatorData[]>([]);
     const [perOpOfflineGGR, setPerOpOfflineGGR] = useState<PerOperatorData[]>([]);
-    const [sortOrders, setSortOrders] = useState<{ online: SortOrder; offline: SortOrder }>({ online: 'desc', offline: 'desc' });
+
+    const [sortOrders, setSortOrders] = useState<{ online: SortOrder; offline: SortOrder }>({
+        online: 'desc',
+        offline: 'desc',
+    });
 
     useEffect(() => {
         let cancelled = false;
@@ -51,16 +71,15 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
             const analytics = await analyticsAPI.getRegulatorAnalytics(regulatorId);
             if (!analytics || cancelled) return;
 
-            setMonthlyOnline(analytics?.monthly?.online ?? []);
-            setMonthlyOffline(analytics?.monthly?.offline ?? []);
-            setMonthlyCombined(analytics?.monthly?.combined ?? []);
+            setMonthlyOnline(analytics.monthly?.online ?? []);
+            setMonthlyOffline(analytics.monthly?.offline ?? []);
+            setMonthlyCombined(analytics.monthly?.combined ?? []);
 
-            setPerOpOnlineStake(analytics?.per_operator?.online?.stake ?? []);
-            setPerOpOnlineGGR(analytics?.per_operator?.online?.ggr ?? []);
-            setPerOpOfflineStake(analytics?.per_operator?.offline?.stake ?? []);
-            setPerOpOfflineGGR(analytics?.per_operator?.offline?.ggr ?? []);
+            setPerOpOnlineStake(analytics.per_operator?.online?.stake ?? []);
+            setPerOpOnlineGGR(analytics.per_operator?.online?.ggr ?? []);
+            setPerOpOfflineStake(analytics.per_operator?.offline?.stake ?? []);
+            setPerOpOfflineGGR(analytics.per_operator?.offline?.ggr ?? []);
         })();
-
         return () => { cancelled = true; };
     }, [regulatorId]);
 
@@ -71,14 +90,20 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
     };
 
     const allMonthKeys = Array.from(
-        new Set([...perOpOnlineStake, ...perOpOnlineGGR, ...perOpOfflineStake, ...perOpOfflineGGR].flatMap(row =>
-            Object.keys(row).filter(k => k !== "operator" && k !== "TOTAL")
+        new Set([
+            ...perOpOnlineStake,
+            ...perOpOnlineGGR,
+            ...perOpOfflineStake,
+            ...perOpOfflineGGR,
+        ].flatMap(r =>
+            Object.keys(r).filter(k => k !== 'operator' && k !== 'TOTAL')
         ))
     ).sort();
 
-    const formatCurrency = (value: number) =>
-        new Intl.NumberFormat('en-MW', { style: 'currency', currency: 'MWK', minimumFractionDigits: 0 }).format(value);
-    const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
+    const formatCurrency = (v: number) =>
+        new Intl.NumberFormat('en-MW', { style: 'currency', currency: 'MWK', minimumFractionDigits: 0 }).format(v);
+
+    const formatPercent = (v: number) => `${(v * 100).toFixed(2)}%`;
 
     const toggleSort = (tab: 'online' | 'offline') => {
         setSortOrders(prev => ({ ...prev, [tab]: prev[tab] === 'desc' ? 'asc' : 'desc' }));
@@ -91,352 +116,256 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                 : (a.TOTAL as number) - (b.TOTAL as number)
         );
 
-    const handleDownloadExcel = () => {
-        alert('Excel download will be implemented with backend integration');
+    const NoDataState = ({ message }: { message: string }) => (
+        <div className="flex flex-col items-center justify-center py-12 text-gray-500 border border-dashed rounded-lg bg-gray-50">
+            <TrendingDown className="size-8 mb-3 text-gray-400" />
+            <p className="text-sm font-medium">{message}</p>
+        </div>
+    );
+
+    const mergeOperatorMetrics = (stake: PerOperatorData[], ggr: PerOperatorData[]) => {
+        const ggrMap = new Map(ggr.map(r => [r.operator, r]));
+        return stake.map(stakeRow => {
+            const ggrRow = ggrMap.get(stakeRow.operator);
+            const merged: PerOperatorData = { operator: stakeRow.operator, TOTAL: stakeRow.TOTAL as number };
+            allMonthKeys.forEach(m => {
+                const s = Number(stakeRow[m] ?? 0);
+                const g = Number(ggrRow?.[m] ?? 0);
+                merged[`${m}_payout`] = s - g;
+                merged[`${m}_ggr_pct`] = s > 0 ? g / s : 0;
+            });
+            merged.TOTAL_PAYOUT = (stakeRow.TOTAL as number) - (ggrRow?.TOTAL ?? 0);
+            merged.TOTAL_GGR_PCT = (stakeRow.TOTAL as number) > 0 ? (ggrRow?.TOTAL ?? 0) / (stakeRow.TOTAL as number) : 0;
+            return merged;
+        });
     };
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Data Analytics</h2>
-                    <p className="text-sm text-gray-600">Comprehensive metrics and operator performance</p>
-                </div>
-                <Button onClick={handleDownloadExcel} className="bg-indigo-600 hover:bg-indigo-700">
-                    <Download className="size-4 mr-2" /> Download Excel
-                </Button>
-            </div>
-
-            <Tabs defaultValue="monthly" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+            <Tabs defaultValue="monthly">
+                <TabsList className="grid grid-cols-3 w-full">
                     <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
                     <TabsTrigger value="online">Per Operator (Online)</TabsTrigger>
                     <TabsTrigger value="offline">Per Operator (Offline)</TabsTrigger>
                 </TabsList>
 
-                {/* MONTHLY SUMMARY */}
-                <TabsContent value="monthly" className="space-y-6 mt-6">
-                    {/* Online Table */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        Online Gaming
-                                        <Badge className="bg-green-100 text-green-800">ONLINE</Badge>
+                {/* MONTHLY DATA */}
+                {(['online', 'offline', 'combined'] as const).map(type => {
+                    const rows = type === 'online' ? monthlyOnline : type === 'offline' ? monthlyOffline : monthlyCombined;
+                    const headerClass =
+                        type === 'online' ? 'from-indigo-50 to-blue-50 border-indigo-200'
+                            : type === 'offline' ? 'from-red-50 to-orange-50 border-red-200'
+                                : 'from-purple-50 to-indigo-50 border-purple-200';
+                    const totalClass =
+                        type === 'online' ? 'bg-indigo-50 border-indigo-300'
+                            : type === 'offline' ? 'bg-red-50 border-red-300'
+                                : 'bg-purple-50 border-purple-300';
+                    const Icon = type === 'online' ? <TrendingUp className="size-4 text-green-600"/> : type === 'offline' ? <TrendingDown className="size-4 text-red-600"/> : null;
+
+                    return (
+                        <TabsContent key={type} value="monthly" className="mt-6 space-y-4">
+                            {rows.length === 0 ? (
+                                <NoDataState message={`No ${type} monthly data available.`}/>
+                            ) : (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 capitalize">
+                                            {type} Gaming <Badge variant="secondary">{type.toUpperCase()}</Badge> {Icon}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm border-collapse">
+                                                <thead>
+                                                <tr className={`bg-gradient-to-r ${headerClass} border-b-2`}>
+                                                    <th className="p-3 text-left">Month</th>
+                                                    <th className="p-3 text-right">Stake</th>
+                                                    <th className="p-3 text-right">Payout</th>
+                                                    <th className="p-3 text-right">Cancelled</th>
+                                                    <th className="p-3 text-right">Open Tickets</th>
+                                                    <th className="p-3 text-right">GGR</th>
+                                                    <th className="p-3 text-right">GGR %</th>
+                                                    <th className="p-3 text-right">% Stake</th>
+                                                    <th className="p-3 text-right">% GGR</th>
+                                                    <th className="p-3 text-right">IGJ</th>
+                                                    <th className="p-3 text-right">FUGOGO</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {rows.map((row, idx) => (
+                                                    <motion.tr key={idx} initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} transition={{delay: idx*0.05}} className={`border-b hover:bg-gray-50 ${row.month==='Total'?`font-bold border-t-2 ${totalClass}`:''}`}>
+                                                        <td className="p-3">{row.month}</td>
+                                                        <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
+                                                        <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
+                                                        <td className="p-3 text-right font-mono">{formatCurrency(row.cancelled)}</td>
+                                                        <td className="p-3 text-right font-mono">{formatCurrency(row.open_tickets)}</td>
+                                                        <td className="p-3 text-right font-mono text-green-700 font-semibold">{formatCurrency(row.ggr)}</td>
+                                                        <td className="p-3 text-right font-mono">{formatPercent(row.ggr_pct)}</td>
+                                                        <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_stake)}</td>
+                                                        <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_ggr)}</td>
+                                                        <td className="p-3 text-right font-mono text-blue-700">{formatCurrency(row.igj)}</td>
+                                                        <td className="p-3 text-right font-mono text-purple-700">{formatCurrency(row.fugogo)}</td>
+                                                    </motion.tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </TabsContent>
+                    );
+                })}
+
+                {/* PER OPERATOR TABLES WITH ADMIN STYLE */}
+                {(['online','offline'] as const).map(tab => {
+                    const stakeData = tab==='online'? perOpOnlineStake: perOpOfflineStake;
+                    const ggrData = tab==='online'? perOpOnlineGGR: perOpOfflineGGR;
+                    const mergedData = mergeOperatorMetrics(stakeData, ggrData);
+
+                    return (
+                        <TabsContent key={tab} value={tab} className="space-y-6">
+                            <div className="flex justify-end mb-2">
+                                <Button variant="outline" size="sm" onClick={()=>toggleSort(tab)}>
+                                    <ArrowUpDown className="size-4 mr-2"/>
+                                    {sortOrders[tab]==='desc'?'Highest → Lowest':'Lowest → Highest'}
+                                </Button>
+                            </div>
+
+                            {/* Stake */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">
+                                        Stake by Operator
+                                        <Badge className={`ml-2 ${tab==='online'?'bg-blue-100 text-blue-800':'bg-orange-100 text-orange-800'}`}>STAKE</Badge>
                                     </CardTitle>
-                                    <CardDescription>Monthly performance metrics for online gaming operations</CardDescription>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <TrendingUp className="size-4 text-green-600" />
-                                    <span className="font-medium">12% IGJ | 8% FUGOGO</span>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b-2 border-indigo-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Month</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Stake</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Payout</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Cancelled</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Open Tickets</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">GGR</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">GGR %</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">% from Stake</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">% from GGR</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">IGJ</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">FUGOGO</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {monthlyOnline.map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 transition ${row.month === 'Total' ? 'bg-indigo-50 font-bold border-t-2 border-indigo-300' : ''}`}>
-                                            <td className="p-3">{row.month}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.cancelled)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.open_tickets)}</td>
-                                            <td className="p-3 text-right font-mono text-green-700 font-semibold">{formatCurrency(row.ggr)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.ggr_pct)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_stake)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_ggr)}</td>
-                                            <td className="p-3 text-right font-mono text-blue-700">{formatCurrency(row.igj)}</td>
-                                            <td className="p-3 text-right font-mono text-purple-700">{formatCurrency(row.fugogo)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <table className={`w-full border-collapse text-sm ${tab==='online'?'from-blue-50 to-indigo-50 border-blue-200':'from-orange-50 to-red-50 border-orange-200'}`}>
+                                            <thead>
+                                            <tr className={`border-b-2 ${tab==='online'?'bg-gradient-to-r from-blue-50 to-indigo-50':'bg-gradient-to-r from-orange-50 to-red-50'}`}>
+                                                <th className="p-3 text-left font-semibold text-gray-700">Operator</th>
+                                                {allMonthKeys.map(m=><th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split('-')[1]]??m}</th>)}
+                                                <th className={`p-3 text-right font-semibold ${tab==='online'?'bg-blue-50':'bg-orange-50'}`}>TOTAL</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {stakeData.length===0?
+                                                <tr><td colSpan={allMonthKeys.length+2} className="p-6"><NoDataState message="No stake data"/></td></tr>:
+                                                stakeData.map((row,idx)=>(
+                                                    <motion.tr key={idx} initial={{opacity:0, x:-10}} animate={{opacity:1, x:0}} transition={{delay:idx*0.04}} className="border-b hover:bg-gray-50">
+                                                        <td className="p-3 font-medium">{row.operator}</td>
+                                                        {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono">{row[m]?formatCurrency(row[m] as number):''}</td>)}
+                                                        <td className={`p-3 text-right font-mono font-bold ${tab==='online'?'bg-blue-50':'bg-orange-50'}`}>{formatCurrency(row.TOTAL)}</td>
+                                                    </motion.tr>
+                                                ))
+                                            }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    {/* Offline Table */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        Offline Gaming
-                                        <Badge className="bg-red-100 text-red-800">OFFLINE</Badge>
+                            {/* Payout */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">
+                                        Payout by Operator
+                                        <Badge className="ml-2 bg-amber-100 text-amber-800">PAYOUT</Badge>
                                     </CardTitle>
-                                    <CardDescription>Monthly performance metrics for offline gaming operations</CardDescription>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <TrendingDown className="size-4 text-red-600" />
-                                    <span className="font-medium">3% IGJ | 5% FUGOGO</span>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-red-50 to-orange-50 border-b-2 border-red-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Month</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Stake</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Payout</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Cancelled</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Open Tickets</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">GGR</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">GGR %</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">% from Stake</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">% from GGR</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">IGJ</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">FUGOGO</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {monthlyOffline.map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 transition ${row.month === 'Total' ? 'bg-red-50 font-bold border-t-2 border-red-300' : ''}`}>
-                                            <td className="p-3">{row.month}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.cancelled)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.open_tickets)}</td>
-                                            <td className="p-3 text-right font-mono text-green-700 font-semibold">{formatCurrency(row.ggr)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.ggr_pct)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_stake)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_ggr)}</td>
-                                            <td className="p-3 text-right font-mono text-blue-700">{formatCurrency(row.igj)}</td>
-                                            <td className="p-3 text-right font-mono text-purple-700">{formatCurrency(row.fugogo)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-sm bg-gradient-to-r from-amber-50 to-orange-50 border-b-2 border-amber-200">
+                                            <thead>
+                                            <tr>
+                                                <th className="p-3 text-left font-semibold text-gray-700">Operator</th>
+                                                {allMonthKeys.map(m=><th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split('-')[1]]??m}</th>)}
+                                                <th className="p-3 text-right font-semibold bg-amber-50">TOTAL</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {mergedData.map((row,idx)=>(
+                                                <tr key={idx} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                    {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono">{formatCurrency(row[`${m}_payout`] as number)}</td>)}
+                                                    <td className="p-3 text-right font-mono font-bold bg-amber-50">{formatCurrency(row.TOTAL_PAYOUT as number)}</td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    {/* Combined Table */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        Combined (Online + Offline)
-                                        <Badge className="bg-purple-100 text-purple-800">TOTAL</Badge>
+                            {/* GGR */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">
+                                        GGR by Operator
+                                        <Badge className="ml-2 bg-green-100 text-green-800">GGR</Badge>
                                     </CardTitle>
-                                    <CardDescription>Aggregated performance across all gaming channels</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b-2 border-purple-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Month</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Stake</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Payout</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Cancelled</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">Open Tickets</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">GGR</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">GGR %</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">% from Stake</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">% from GGR</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">IGJ</th>
-                                        <th className="text-right p-3 font-semibold text-gray-700">FUGOGO</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {monthlyCombined.map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className={`border-b hover:bg-gray-50 transition ${row.month === 'Total' ? 'bg-purple-50 font-bold border-t-2 border-purple-300' : ''}`}>
-                                            <td className="p-3">{row.month}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.payout)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.cancelled)}</td>
-                                            <td className="p-3 text-right font-mono">{formatCurrency(row.open_tickets)}</td>
-                                            <td className="p-3 text-right font-mono text-green-700 font-semibold">{formatCurrency(row.ggr)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.ggr_pct)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_stake)}</td>
-                                            <td className="p-3 text-right font-mono">{formatPercent(row.percent_from_ggr)}</td>
-                                            <td className="p-3 text-right font-mono text-blue-700">{formatCurrency(row.igj)}</td>
-                                            <td className="p-3 text-right font-mono text-purple-700">{formatCurrency(row.fugogo)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-sm bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
+                                            <thead>
+                                            <tr>
+                                                <th className="p-3 text-left font-semibold text-gray-700">Operator</th>
+                                                {allMonthKeys.map(m=><th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split('-')[1]]??m}</th>)}
+                                                <th className="p-3 text-right font-semibold bg-green-100">TOTAL</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {ggrData.map((row,idx)=>(
+                                                <motion.tr key={idx} initial={{opacity:0, x:-10}} animate={{opacity:1, x:0}} transition={{delay:idx*0.04}} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                    {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono text-green-700">{row[m]?formatCurrency(row[m] as number):''}</td>)}
+                                                    <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL)}</td>
+                                                </motion.tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                {/* PER OPERATOR ONLINE */}
-                <TabsContent value="online" className="space-y-6 mt-6">
-                    <div className="flex justify-end mb-2">
-                        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => toggleSort('online')}>
-                            <ArrowUpDown className="size-4" />
-                            {sortOrders.online === 'desc' ? 'Highest → Lowest' : 'Lowest → Highest'}
-                        </Button>
-                    </div>
-
-                    {/* Stake Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                Stake by Operator (Online)
-                                <Badge className="bg-blue-100 text-blue-800">STAKE</Badge>
-                            </CardTitle>
-                            <CardDescription>Monthly stake breakdown per operator for online gaming</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
-                                        <th className="text-right p-3 font-semibold text-gray-700 bg-blue-100">TOTAL</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {sortByTotal(perOpOnlineStake, 'online').map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
-                                            <td className="p-3 font-medium">{row.operator}</td>
-                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
-                                            <td className="p-3 text-right font-mono font-bold bg-blue-50">{formatCurrency(row.TOTAL as number)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* GGR Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                GGR by Operator (Online)
-                                <Badge className="bg-green-100 text-green-800">GGR</Badge>
-                            </CardTitle>
-                            <CardDescription>Monthly GGR breakdown per operator for online gaming</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
-                                        <th className="text-right p-3 font-semibold text-green-100">TOTAL</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {sortByTotal(perOpOnlineGGR, 'online').map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
-                                            <td className="p-3 font-medium">{row.operator}</td>
-                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono text-green-700">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
-                                            <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL as number)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                {/* PER OPERATOR OFFLINE */}
-                <TabsContent value="offline" className="space-y-6 mt-6">
-                    <div className="flex justify-end mb-2">
-                        <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => toggleSort('offline')}>
-                            <ArrowUpDown className="size-4" />
-                            {sortOrders.offline === 'desc' ? 'Highest → Lowest' : 'Lowest → Highest'}
-                        </Button>
-                    </div>
-
-                    {/* Stake Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                Stake by Operator (Offline)
-                                <Badge className="bg-orange-100 text-orange-800">STAKE</Badge>
-                            </CardTitle>
-                            <CardDescription>Monthly stake breakdown per operator for offline gaming</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-orange-50 to-red-50 border-b-2 border-orange-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
-                                        <th className="text-right p-3 font-semibold text-gray-700 bg-orange-100">TOTAL</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {sortByTotal(perOpOfflineStake, 'offline').map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
-                                            <td className="p-3 font-medium">{row.operator}</td>
-                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
-                                            <td className="p-3 text-right font-mono font-bold bg-orange-50">{formatCurrency(row.TOTAL as number)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* GGR Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                GGR by Operator (Offline)
-                                <Badge className="bg-green-100 text-green-800">GGR</Badge>
-                            </CardTitle>
-                            <CardDescription>Monthly GGR breakdown per operator for offline gaming</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                    <tr className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
-                                        <th className="text-left p-3 font-semibold text-gray-700">Operator</th>
-                                        {allMonthKeys.map(m => <th key={m} className="text-right p-3 font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
-                                        <th className="text-right p-3 font-semibold text-green-100">TOTAL</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {sortByTotal(perOpOfflineGGR, 'offline').map((row, idx) => (
-                                        <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50 transition">
-                                            <td className="p-3 font-medium">{row.operator}</td>
-                                            {allMonthKeys.map(m => <td key={m} className="p-3 text-right font-mono text-green-700">{row[m] !== undefined ? formatCurrency(row[m] as number) : ''}</td>)}
-                                            <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL as number)}</td>
-                                        </motion.tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                            {/* GGR % */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">
+                                        GGR % by Operator
+                                        <Badge className="ml-2 bg-purple-100 text-purple-800">GGR %</Badge>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-sm bg-gradient-to-r from-purple-50 to-indigo-50 border-b-2 border-purple-200">
+                                            <thead>
+                                            <tr>
+                                                <th className="p-3 text-left font-semibold text-gray-700">Operator</th>
+                                                {allMonthKeys.map(m=><th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split('-')[1]]??m}</th>)}
+                                                <th className="p-3 text-right font-semibold bg-purple-50">TOTAL</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {mergedData.map((row,idx)=>(
+                                                <tr key={idx} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                    {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono">{formatPercent(row[`${m}_ggr_pct`] as number)}</td>)}
+                                                    <td className="p-3 text-right font-mono font-bold bg-purple-50">{formatPercent(row.TOTAL_GGR_PCT as number)}</td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    )
+                })}
             </Tabs>
         </div>
-    );
+    )
 }
