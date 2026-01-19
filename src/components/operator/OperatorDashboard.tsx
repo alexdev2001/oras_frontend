@@ -131,6 +131,13 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
         { icon: Star, title: 'Approval Rate', description: '90%+ approval rate', unlocked: reports.length > 0 && (allApproved.length / reports.length) >= 0.9 },
     ];
 
+    const formatMWK = (value: number) =>
+        new Intl.NumberFormat('en-MW', {
+            style: 'currency',
+            currency: 'MWK',
+            minimumFractionDigits: 0,
+        }).format(value);
+
     if (showSubmissionForm) {
         return (
             <ReportSubmissionForm
@@ -250,8 +257,16 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                             {[
                                 { title: 'Total Reports', value: filteredReports.length, icon: FileText, suffix: '' },
-                                { title: 'Total Revenue', value: totalRevenue, icon: TrendingUp, prefix: '$', format: true },
-                                { title: 'Total GGR', value: totalGGR, icon: BarChart3, prefix: '$', format: true },
+                                {
+                                    title: 'Total Revenue',
+                                    value: formatMWK(totalRevenue),
+                                    icon: TrendingUp,
+                                },
+                                {
+                                    title: 'Total GGR',
+                                    value: formatMWK(totalGGR),
+                                    icon: BarChart3,
+                                },
                                 { title: 'Avg GGR %', value: avgGGRPercentage, icon: Target, suffix: '%', decimals: 2 },
                             ].map((stat) => (
                                 <div key={stat.title}>

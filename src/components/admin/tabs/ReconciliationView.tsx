@@ -92,18 +92,19 @@ export function ReconciliationView() {
     const handleCompare = async () => {
         if (!selectedReport) return;
 
-        const reportGGR = selectedReport.totalGGR;
-        const emsGGR = parseFloat(emsData.totalGGR.replace(/,/g, ""));
+        setIsComparing(true);
 
-        if (isNaN(emsGGR)) return;
+        try {
+            const reportGGR = selectedReport.totalGGR;
+            const emsGGR = parseFloat(emsData.totalGGR.replace(/,/g, ""));
 
-        const percentDiff = Math.abs(emsGGR - reportGGR) / reportGGR * 100;
-        const isMatch = percentDiff <= 2;
+            if (isNaN(emsGGR)) return;
 
-        if (isMatch) {
-            try {
+            const percentDiff = Math.abs(emsGGR - reportGGR) / reportGGR * 100;
+            const isMatch = percentDiff <= 2;
+
+            if (isMatch) {
                 await reportsAPI.reviewReport(selectedReport.id, 'approved');
-
                 await reportsAPI.notifyOperators(Number(selectedReport.operatorId));
 
                 setComparison({
@@ -114,28 +115,29 @@ export function ReconciliationView() {
                     matchStatus: "matched",
                     discrepancies: []
                 });
-
-            } catch (error) {
-                console.error("Approval error:", error);
-                alert("Failed to approve report.");
+            } else {
+                setComparison({
+                    reportId: selectedReport.id,
+                    operatorName: selectedReport.operatorName,
+                    month: selectedReport.month,
+                    year: selectedReport.year,
+                    matchStatus: "mismatch",
+                    discrepancies: [
+                        {
+                            field: "GGR",
+                            reportValue: reportGGR,
+                            emsValue: emsGGR,
+                            percentDifference: percentDiff,
+                            difference: emsGGR - reportGGR
+                        }
+                    ]
+                });
             }
-        } else {
-            setComparison({
-                reportId: selectedReport.id,
-                operatorName: selectedReport.operatorName,
-                month: selectedReport.month,
-                year: selectedReport.year,
-                matchStatus: "mismatch",
-                discrepancies: [
-                    {
-                        field: "GGR",
-                        reportValue: reportGGR,
-                        emsValue: emsGGR,
-                        percentDifference: percentDiff,
-                        difference: emsGGR - reportGGR
-                    }
-                ]
-            });
+        } catch (error) {
+            console.error("Comparison error:", error);
+            alert("Failed to compare data.");
+        } finally {
+            setIsComparing(false);
         }
     };
 
@@ -290,10 +292,24 @@ export function ReconciliationView() {
                                     </Button>
                                     <Button
                                         onClick={handleCompare}
-                                        disabled={isComparing || !emsData.totalGGR || !emsData.totalStake || !emsData.totalBetCount}
+                                        disabled={
+                                            isComparing ||
+                                            !emsData.totalGGR ||
+                                            !emsData.totalStake ||
+                                            !emsData.totalBetCount
+                                        }
                                     >
-                                        <Search className="size-4 mr-2" />
-                                        {isComparing ? 'Comparing...' : 'Compare Data'}
+                                        {isComparing ? (
+                                            <>
+                                                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                Comparing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Search className="size-4 mr-2" />
+                                                Compare Data
+                                            </>
+                                        )}
                                     </Button>
                                 </div>
                             </div>
