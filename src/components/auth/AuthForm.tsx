@@ -76,11 +76,6 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                     </CardHeader>
                     <CardContent>
                         <Tabs defaultValue="signin">
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                                <TabsTrigger value="register">Register</TabsTrigger>
-                            </TabsList>
-
                             <TabsContent value="signin">
                                 <form onSubmit={handleSignIn} className="space-y-4">
                                     <div className="space-y-2">
@@ -119,56 +114,6 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                                     )}
                                     <Button type="submit" className="w-full" disabled={isLoading}>
                                         {isLoading ? 'Signing in...' : 'Sign In'}
-                                    </Button>
-                                </form>
-                            </TabsContent>
-
-                            <TabsContent value="register">
-                                <form onSubmit={handleSignUp} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="signup-name">Full Name</Label>
-                                        <Input
-                                            id="signup-name"
-                                            name="name"
-                                            placeholder="John Doe"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="signup-email">Email</Label>
-                                        <Input
-                                            id="signup-email"
-                                            name="email"
-                                            type="email"
-                                            placeholder="operator@example.com"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="signup-password">Password</Label>
-                                        <Input
-                                            id="signup-password"
-                                            name="password"
-                                            type="password"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="signup-operator">Operator Name</Label>
-                                        <Input
-                                            id="signup-operator"
-                                            name="operatorName"
-                                            placeholder="Acme Gaming Ltd"
-                                            required
-                                        />
-                                    </div>
-                                    {error && (
-                                        <div className="text-red-600 text-sm bg-red-50 p-3 rounded">
-                                            {error}
-                                        </div>
-                                    )}
-                                    <Button type="submit" className="w-full" disabled={isLoading}>
-                                        {isLoading ? 'Requesting account...' : 'Request account'}
                                     </Button>
                                 </form>
                             </TabsContent>

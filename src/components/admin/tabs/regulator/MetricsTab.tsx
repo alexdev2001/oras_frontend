@@ -93,21 +93,45 @@ function NoMetricsState({ message }: { message?: string }) {
     );
 }
 
-export function MetricsTab({ metrics }: { metrics: Metric[] }) {
+export function MetricsTab({
+                               metrics,
+                               selectedRegulator = "all",
+                               selectedMonth = "all",
+                               regulators = [],
+                           }: {
+    metrics: Metric[];
+    selectedRegulator?: string;
+    selectedMonth?: string;
+    regulators?: { regulator_id: number; regulator_name: string }[];
+}) {
     const [regulatorNames, setRegulatorNames] = useState<Record<number, string>>({});
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const [regulatorCollapsed, setRegulatorCollapsed] = useState<Record<number, boolean>>({});
 
+    const selectedRegulatorId = useMemo(() => {
+        if (selectedRegulator === "all") return null;
+        const reg = regulators.find(r => r.regulator_name === selectedRegulator);
+        return reg ? reg.regulator_id : null;
+    }, [selectedRegulator, regulators]);
+
+    const filteredMetrics = useMemo(() => {
+        return metrics.filter(m => {
+            const matchesRegulator =
+                selectedRegulatorId === null || m.regulator_id === selectedRegulatorId;
+            const matchesMonth =
+                selectedMonth === "all" || m.month_year === selectedMonth;
+            return matchesRegulator && matchesMonth;
+        });
+    }, [metrics, selectedRegulatorId, selectedMonth]);
+
     const metricsByRegulator = useMemo(() => {
-        return metrics.reduce((acc, m) => {
+        return filteredMetrics.reduce((acc, m) => {
             if (!acc[m.regulator_id]) acc[m.regulator_id] = {};
-            if (!acc[m.regulator_id][m.operator_name]) {
-                acc[m.regulator_id][m.operator_name] = [];
-            }
+            if (!acc[m.regulator_id][m.operator_name]) acc[m.regulator_id][m.operator_name] = [];
             acc[m.regulator_id][m.operator_name].push(m);
             return acc;
         }, {} as Record<number, Record<string, Metric[]>>);
-    }, [metrics]);
+    }, [filteredMetrics]);
 
     useEffect(() => {
         const loadRegulators = async () => {

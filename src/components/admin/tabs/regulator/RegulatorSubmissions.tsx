@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -10,7 +12,6 @@ import {
     ChevronDown,
     ChevronRight,
 } from 'lucide-react';
-
 import {
     Card,
     CardContent,
@@ -28,15 +29,22 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { reportsAPI } from "@/utils/API.ts";
-
 import { FilePreview } from '@/components/regulator/FilePreview';
 import type { RegulatorSubmission } from '@/components/regulator/RegulatorDashboard';
 
 interface Props {
     submissions: RegulatorSubmission[];
+    selectedRegulator?: string;
+    selectedMonth?: string;
+    regulators?: { regulator_id: number; regulator_name: string }[];
 }
 
-export function AdminRegulatorSubmissions({ submissions }: Props) {
+export function AdminRegulatorSubmissions({
+                                              submissions,
+                                              selectedRegulator = "all",
+                                              selectedMonth = "all",
+                                              regulators = [],
+                                          }: Props) {
     const [filterType, setFilterType] =
         useState<'all' | 'online' | 'offline'>('all');
     const [sortOrder, setSortOrder] =
@@ -44,15 +52,31 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
     const [openRegulators, setOpenRegulators] =
         useState<Record<string, boolean>>({});
 
-    /* -------------------- STATS -------------------- */
+    // Convert selectedRegulator name to its ID
+    const selectedRegulatorId = useMemo(() => {
+        if (selectedRegulator === "all") return null;
+        const reg = regulators.find(r => r.regulator_name === selectedRegulator);
+        return reg ? reg.regulator_id.toString() : null;
+    }, [selectedRegulator, regulators]);
 
-    const totalOnline = submissions.filter(s => s.status === 'online').length;
-    const totalOffline = submissions.filter(s => s.status === 'offline').length;
+    /* -------------------- FILTERED SUBMISSIONS -------------------- */
+    const filteredSubmissions = useMemo(() => {
+        return submissions.filter(s => {
+            const matchesRegulator =
+                !selectedRegulatorId || s.regulatorId === selectedRegulatorId;
+            const matchesMonth =
+                selectedMonth === "all" || s.submittedAt.startsWith(selectedMonth);
+            return matchesRegulator && matchesMonth;
+        });
+    }, [submissions, selectedRegulatorId, selectedMonth]);
+
+    /* -------------------- STATS -------------------- */
+    const totalOnline = filteredSubmissions.filter(s => s.status === 'online').length;
+    const totalOffline = filteredSubmissions.filter(s => s.status === 'offline').length;
 
     /* -------------------- GROUP BY REGULATOR -------------------- */
-
     const grouped = useMemo(() => {
-        return submissions.reduce<Record<string, RegulatorSubmission[]>>(
+        return filteredSubmissions.reduce<Record<string, RegulatorSubmission[]>>(
             (acc, s) => {
                 if (!acc[s.regulatorName]) acc[s.regulatorName] = [];
                 acc[s.regulatorName].push(s);
@@ -60,10 +84,9 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
             },
             {}
         );
-    }, [submissions]);
+    }, [filteredSubmissions]);
 
     /* -------------------- FILTER + SORT -------------------- */
-
     const processSubmissions = (list: RegulatorSubmission[]) => {
         let data = [...list];
 
@@ -81,20 +104,15 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
     };
 
     /* -------------------- DOWNLOAD -------------------- */
-
     const downloadFile = async (reportId: number, fileName: string) => {
-        console.log('triggered')
         try {
             const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
-
             const url = URL.createObjectURL(blob);
-
             const link = document.createElement('a');
             link.href = url;
             link.download = fileName;
             document.body.appendChild(link);
             link.click();
-
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -103,7 +121,6 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
     };
 
     /* -------------------- BADGES -------------------- */
-
     const getStatusBadge = (status: string) =>
         status === 'online' ? (
             <Badge className="bg-green-500">
@@ -118,7 +135,6 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
         );
 
     /* ==================== RENDER ==================== */
-
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -130,7 +146,7 @@ export function AdminRegulatorSubmissions({ submissions }: Props) {
                 {[
                     {
                         label: 'Total Submissions',
-                        value: submissions.length,
+                        value: filteredSubmissions.length,
                         color: 'from-indigo-500 to-blue-500',
                         icon: FileText,
                     },

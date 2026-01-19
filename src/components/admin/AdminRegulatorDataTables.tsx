@@ -1,30 +1,24 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from "react";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card.tsx';
-import { Badge } from '@/components/ui/badge.tsx';
-import { motion, AnimatePresence } from 'motion/react';
+} from "@/components/ui/card.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { motion, AnimatePresence } from "motion/react";
 import {
     TrendingUp,
     TrendingDown,
     ChevronDown,
     ChevronRight,
     ArrowUpDown,
-} from 'lucide-react';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@/components/ui/tabs.tsx';
-import { Button } from '@/components/ui/button.tsx';
-import { analyticsAPI } from '@/utils/API.ts';
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 interface MonthlyData {
     month: string;
@@ -46,7 +40,8 @@ interface PerOperatorData {
     [key: string]: number | string;
 }
 
-interface RegulatorAnalytics {
+export interface RegulatorAnalytics {
+    regulator_id: number;
     regulator_name: string;
     monthly: {
         online: MonthlyData[];
@@ -65,23 +60,122 @@ interface RegulatorAnalytics {
     };
 }
 
-type SortOrder = 'desc' | 'asc';
+type SortOrder = "desc" | "asc";
 
-export function AdminRegulatorDataTables() {
-    const [analytics, setAnalytics] = useState<RegulatorAnalytics[]>([]);
-    const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+export function AdminRegulatorDataTables({
+                                             analytics,
+                                             selectedRegulator,
+                                             selectedMonth = "all",
+                                         }: {
+    analytics: RegulatorAnalytics[];
+    selectedRegulator: string;
+    selectedMonth?: string;
+}) {
+    const [expanded, setExpanded] = useState<Record<number, boolean>>(
+        () => Object.fromEntries(analytics.map((_, idx) => [idx, true]))
+    );
     const [activeTabs, setActiveTabs] = useState<Record<number, string>>({});
     const [sortOrders, setSortOrders] = useState<Record<number, SortOrder>>({});
 
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            const res = await analyticsAPI.getRegulatorAnalyticsAdmin();
-            if (!res || cancelled) return;
-            setAnalytics(res);
-        })();
-        return () => { cancelled = true; };
-    }, []);
+    const monthNames: Record<string, string> = {
+        "01": "January",
+        "02": "February",
+        "03": "March",
+        "04": "April",
+        "05": "May",
+        "06": "June",
+        "07": "July",
+        "08": "August",
+        "09": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December",
+    };
+
+    const selectedMonthName =
+        selectedMonth === "all" ? "all" : monthNames[selectedMonth.split("-")[1]] ?? selectedMonth;
+
+    const filteredMonthlyRows = (rows: MonthlyData[]) =>
+        selectedMonthName === "all"
+            ? rows
+            : rows.filter(r => r.month === selectedMonthName || r.month === "Total");
+
+    const monthKeyToName = (key: string) => {
+        const monthPart = key.split("-")[1];
+        if (!monthPart) return key;
+        return monthNames[monthPart] ?? key;
+    };
+
+    const filteredAnalytics = useMemo(() => {
+        if (selectedRegulator === "all") return analytics;
+        return analytics.filter((r) => r.regulator_name === selectedRegulator);
+    }, [analytics, selectedRegulator]);
+
+    const formatCurrency = (value: number) =>
+        new Intl.NumberFormat("en-MW", { style: "currency", currency: "MWK", minimumFractionDigits: 0 }).format(value);
+
+    const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
+
+    const toggleRegulator = (idx: number) => {
+        setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));
+        setActiveTabs((prev) => ({ ...prev, [idx]: prev[idx] ?? "monthly" }));
+        setSortOrders((prev) => ({ ...prev, [idx]: prev[idx] ?? "desc" }));
+    };
+
+    const setTabForRegulator = (regIdx: number, value: string) => {
+        setActiveTabs((prev) => ({ ...prev, [regIdx]: value }));
+    };
+
+    const toggleSortOrder = (regIdx: number) => {
+        setSortOrders((prev) => ({
+            ...prev,
+            [regIdx]: prev[regIdx] === "desc" ? "asc" : "desc",
+        }));
+    };
+
+    const sortByTotal = (rows: PerOperatorData[], regIdx: number) =>
+        [...rows].sort((a, b) =>
+            (sortOrders[regIdx] ?? "desc") === "desc"
+                ? (b.TOTAL as number) - (a.TOTAL as number)
+                : (a.TOTAL as number) - (b.TOTAL as number)
+        );
+
+    const mergeOperatorMetrics = (stakeRows: PerOperatorData[], ggrRows: PerOperatorData[], monthKeys: string[]) => {
+        const ggrMap = new Map(ggrRows.map((r) => [r.operator, r]));
+        return stakeRows.map((stakeRow) => {
+            const ggrRow = ggrMap.get(stakeRow.operator);
+            const merged: PerOperatorData = { operator: stakeRow.operator, TOTAL: stakeRow.TOTAL as number };
+
+            monthKeys.forEach((m) => {
+                const stake = Number(stakeRow[m] ?? 0);
+                const ggr = Number(ggrRow?.[m] ?? 0);
+                merged[`${m}_stake`] = stake;
+                merged[`${m}_ggr`] = ggr;
+                merged[`${m}_payout`] = stake - ggr;
+                merged[`${m}_ggr_pct`] = stake > 0 ? ggr / stake : 0;
+            });
+
+            merged.TOTAL_PAYOUT = (stakeRow.TOTAL as number) - (ggrRow?.TOTAL as number ?? 0);
+            merged.TOTAL_GGR_PCT = stakeRow.TOTAL > 0 ? (ggrRow?.TOTAL as number ?? 0) / stakeRow.TOTAL : 0;
+            return merged;
+        });
+    };
+
+    const getMonthKeysForRegulator = (reg: RegulatorAnalytics, selectedMonth: string) => {
+        const keys = Array.from(
+            new Set([
+                ...reg.per_operator.online.stake.flatMap((r) => Object.keys(r)),
+                ...reg.per_operator.online.ggr.flatMap((r) => Object.keys(r)),
+                ...reg.per_operator.offline.stake.flatMap((r) => Object.keys(r)),
+                ...reg.per_operator.offline.ggr.flatMap((r) => Object.keys(r)),
+            ])
+        ).filter((k) => k !== "operator" && k !== "TOTAL");
+
+        if (selectedMonth === "all") return keys.sort();
+
+        // Include TOTAL key always
+        return keys.includes(selectedMonth) ? [selectedMonth, "TOTAL"] : ["TOTAL"];
+    };
 
     function NoDataState({ message }: { message: string }) {
         return (
@@ -92,157 +186,71 @@ export function AdminRegulatorDataTables() {
         );
     }
 
-    const toggleRegulator = (idx: number) => {
-        setExpanded(prev => ({ ...prev, [idx]: !prev[idx] }));
-        setActiveTabs(prev => ({ ...prev, [idx]: prev[idx] ?? 'monthly' }));
-        setSortOrders(prev => ({ ...prev, [idx]: prev[idx] ?? 'desc' }));
-    };
-
-    const isOpen = (idx: number) => expanded[idx] ?? true;
-    const setTabForRegulator = (regIdx: number, value: string) => {
-        setActiveTabs(prev => ({ ...prev, [regIdx]: value }));
-    };
-    const toggleSortOrder = (regIdx: number) => {
-        setSortOrders(prev => ({
-            ...prev,
-            [regIdx]: prev[regIdx] === 'desc' ? 'asc' : 'desc'
-        }));
-    };
-
-    const monthNames: Record<string, string> = {
-        "01": "January", "02": "February", "03": "March", "04": "April",
-        "05": "May", "06": "June", "07": "July", "08": "August",
-        "09": "September", "10": "October", "11": "November", "12": "December",
-    };
-
-    const formatCurrency = (value: number) =>
-        new Intl.NumberFormat('en-MW', { style: 'currency', currency: 'MWK', minimumFractionDigits: 0 }).format(value);
-    const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
-
-    const sortByTotal = (rows: PerOperatorData[], regIdx: number) =>
-        [...rows].sort((a, b) =>
-            (sortOrders[regIdx] ?? 'desc') === 'desc'
-                ? (b.TOTAL as number) - (a.TOTAL as number)
-                : (a.TOTAL as number) - (b.TOTAL as number)
-        );
-
-    if (analytics.length === 0) {
-        return (
-            <NoDataState message="No regulator analytics data available." />
-        );
-    }
-
-    function mergeOperatorMetrics(
-        stakeRows: PerOperatorData[],
-        ggrRows: PerOperatorData[],
-        monthKeys: string[]
-    ) {
-        const ggrMap = new Map(
-            ggrRows.map(r => [r.operator, r])
-        );
-
-        return stakeRows.map(stakeRow => {
-            const ggrRow = ggrMap.get(stakeRow.operator);
-            const merged: PerOperatorData = {
-                operator: stakeRow.operator,
-                TOTAL: stakeRow.TOTAL as number,
-            };
-
-            monthKeys.forEach(m => {
-                const stake = Number(stakeRow[m] ?? 0);
-                const ggr = Number(ggrRow?.[m] ?? 0);
-
-                merged[`${m}_stake`] = stake;
-                merged[`${m}_ggr`] = ggr;
-                merged[`${m}_payout`] = stake - ggr;
-                merged[`${m}_ggr_pct`] = stake > 0 ? ggr / stake : 0;
-            });
-
-            merged.TOTAL_PAYOUT =
-                (stakeRow.TOTAL as number) - (ggrRow?.TOTAL as number ?? 0);
-
-            merged.TOTAL_GGR_PCT =
-                stakeRow.TOTAL > 0
-                    ? (ggrRow?.TOTAL as number ?? 0) / stakeRow.TOTAL
-                    : 0;
-
-            return merged;
-        });
-    }
+    if (analytics.length === 0) return <NoDataState message="No regulator analytics data available." />;
 
     return (
         <div className="space-y-8">
-            {analytics.map((reg, regIdx) => {
-                const allMonthKeys = Array.from(
-                    new Set([
-                        ...reg.per_operator.online.stake.flatMap(r => Object.keys(r).filter(k => k !== 'operator' && k !== 'TOTAL')),
-                        ...reg.per_operator.online.ggr.flatMap(r => Object.keys(r).filter(k => k !== 'operator' && k !== 'TOTAL')),
-                        ...reg.per_operator.offline.stake.flatMap(r => Object.keys(r).filter(k => k !== 'operator' && k !== 'TOTAL')),
-                        ...reg.per_operator.offline.ggr.flatMap(r => Object.keys(r).filter(k => k !== 'operator' && k !== 'TOTAL')),
-                    ])
-                ).sort();
+            {filteredAnalytics.map((reg, regIdx) => {
+                const allMonthKeys = selectedMonth === 'all'
+                    ? Array.from(new Set([
+                        ...reg.per_operator.online.stake.flatMap(r => Object.keys(r)),
+                        ...reg.per_operator.online.ggr.flatMap(r => Object.keys(r)),
+                    ])).filter(k => k !== 'operator' && k !== 'TOTAL').sort()
+                    : [selectedMonth, 'TOTAL'];
 
                 return (
                     <Card key={regIdx} className="shadow-sm">
-                        <CardHeader
-                            className="cursor-pointer select-none"
-                            onClick={() => toggleRegulator(regIdx)}
-                        >
+                        <CardHeader className="cursor-pointer select-none" onClick={() => toggleRegulator(regIdx)}>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="text-lg font-semibold">{reg.regulator_name}</CardTitle>
                                     <CardDescription>Detailed performance overview</CardDescription>
                                 </div>
-                                {isOpen(regIdx)
-                                    ? <ChevronDown className="size-5 text-gray-500" />
-                                    : <ChevronRight className="size-5 text-gray-500" />}
+                                {expanded[regIdx] ? <ChevronDown className="size-5 text-gray-500" /> : <ChevronRight className="size-5 text-gray-500" />}
                             </div>
                         </CardHeader>
 
                         <AnimatePresence initial={false}>
-                            {isOpen(regIdx) && (
+                            {expanded[regIdx] && (
                                 <motion.div
                                     initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
+                                    animate={{ height: "auto", opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                    transition={{ duration: 0.25, ease: "easeInOut" }}
                                 >
                                     <CardContent>
-                                        <Tabs
-                                            value={activeTabs[regIdx] ?? 'monthly'}
-                                            onValueChange={val => setTabForRegulator(regIdx, val)}
-                                        >
+                                        <Tabs value={activeTabs[regIdx] ?? "monthly"} onValueChange={(val) => setTabForRegulator(regIdx, val)}>
                                             <TabsList className="mb-6">
                                                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                                 <TabsTrigger value="online">Online per operator</TabsTrigger>
                                                 <TabsTrigger value="offline">Offline per operator</TabsTrigger>
                                             </TabsList>
 
-                                            {/* MONTHLY */}
+                                            {/* MONTHLY TABLES */}
                                             <TabsContent value="monthly" className="space-y-6">
-                                                {(['online', 'offline', 'combined'] as const).map(type => {
-                                                    const rows = reg.monthly[type];
+                                                {(["online", "offline", "combined"] as const).map((type) => {
+                                                    const rows = filteredMonthlyRows(reg.monthly[type]);
+
                                                     const headerClass =
-                                                        type === 'online'
-                                                            ? 'from-indigo-50 to-blue-50 border-indigo-200'
-                                                            : type === 'offline'
-                                                                ? 'from-red-50 to-orange-50 border-red-200'
-                                                                : 'from-purple-50 to-indigo-50 border-purple-200';
+                                                        type === "online"
+                                                            ? "from-indigo-50 to-blue-50 border-indigo-200"
+                                                            : type === "offline"
+                                                                ? "from-red-50 to-orange-50 border-red-200"
+                                                                : "from-purple-50 to-indigo-50 border-purple-200";
+
                                                     const totalClass =
-                                                        type === 'online'
-                                                            ? 'bg-indigo-50 border-indigo-300'
-                                                            : type === 'offline'
-                                                                ? 'bg-red-50 border-red-300'
-                                                                : 'bg-purple-50 border-purple-300';
+                                                        type === "online"
+                                                            ? "bg-indigo-50 border-indigo-300"
+                                                            : type === "offline"
+                                                                ? "bg-red-50 border-red-300"
+                                                                : "bg-purple-50 border-purple-300";
+
                                                     return (
                                                         <div key={type} className="space-y-3">
                                                             <div className="flex items-center gap-2">
                                                                 <h3 className="font-semibold capitalize">{type} Gaming</h3>
                                                                 <Badge variant="secondary">{type.toUpperCase()}</Badge>
-                                                                {type !== 'combined' &&
-                                                                    (type === 'online'
-                                                                        ? <TrendingUp className="size-4 text-green-600" />
-                                                                        : <TrendingDown className="size-4 text-red-600" />)}
+                                                                {type !== "combined" && (type === "online" ? <TrendingUp className="size-4 text-green-600" /> : <TrendingDown className="size-4 text-red-600" />)}
                                                             </div>
                                                             <div className="overflow-x-auto">
                                                                 <table className="w-full border-collapse text-sm">
@@ -275,11 +283,7 @@ export function AdminRegulatorDataTables() {
                                                                                 initial={{ opacity: 0, y: 10 }}
                                                                                 animate={{ opacity: 1, y: 0 }}
                                                                                 transition={{ delay: idx * 0.05 }}
-                                                                                className={`border-b hover:bg-gray-50 ${
-                                                                                    row.month === 'Total'
-                                                                                        ? `font-bold border-t-2 ${totalClass}`
-                                                                                        : ''
-                                                                                }`}
+                                                                                className={`border-b hover:bg-gray-50 ${row.month === "Total" ? `font-bold border-t-2 ${totalClass}` : ""}`}
                                                                             >
                                                                                 <td className="p-3">{row.month}</td>
                                                                                 <td className="p-3 text-right font-mono">{formatCurrency(row.stake)}</td>
@@ -303,38 +307,21 @@ export function AdminRegulatorDataTables() {
                                                 })}
                                             </TabsContent>
 
-                                            {/* PER OPERATOR */}
-                                            {(['online', 'offline'] as const).map(tab => {
+                                            {(["online", "offline"] as const).map((tab) => {
                                                 const stakeData = sortByTotal(
-                                                    tab === 'online'
-                                                        ? reg.per_operator.online.stake
-                                                        : reg.per_operator.offline.stake,
+                                                    tab === "online" ? reg.per_operator.online.stake : reg.per_operator.offline.stake,
                                                     regIdx
                                                 );
-
-                                                const ggrData =
-                                                    tab === 'online'
-                                                        ? reg.per_operator.online.ggr
-                                                        : reg.per_operator.offline.ggr;
-
-                                                const mergedData = mergeOperatorMetrics(
-                                                    stakeData,
-                                                    ggrData,
-                                                    allMonthKeys
-                                                );
+                                                const ggrData = tab === "online" ? reg.per_operator.online.ggr : reg.per_operator.offline.ggr;
+                                                const mergedData = mergeOperatorMetrics(stakeData, ggrData, allMonthKeys);
 
                                                 return (
                                                     <TabsContent key={tab} value={tab} className="space-y-6">
-                                                        {/* SORT FILTER */}
+                                                        {/* Sort button */}
                                                         <div className="flex justify-end mb-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => toggleSortOrder(regIdx)}
-                                                                className="flex items-center gap-2"
-                                                            >
+                                                            <Button variant="outline" size="sm" onClick={() => toggleSortOrder(regIdx)} className="flex items-center gap-2">
                                                                 <ArrowUpDown className="size-4" />
-                                                                {(sortOrders[regIdx] ?? 'desc') === 'desc' ? 'Highest → Lowest' : 'Lowest → Highest'}
+                                                                {(sortOrders[regIdx] ?? "desc") === "desc" ? "Highest → Lowest" : "Lowest → Highest"}
                                                             </Button>
                                                         </div>
 
@@ -343,17 +330,21 @@ export function AdminRegulatorDataTables() {
                                                             <CardHeader>
                                                                 <CardTitle className="text-lg">
                                                                     Stake by Operator
-                                                                    <Badge className={`ml-2 ${tab === 'online' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>STAKE</Badge>
+                                                                    <Badge className={`ml-2 ${tab === "online" ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}`}>STAKE</Badge>
                                                                 </CardTitle>
                                                             </CardHeader>
                                                             <CardContent>
                                                                 <div className="overflow-x-auto">
                                                                     <table className="w-full border-collapse text-sm">
                                                                         <thead>
-                                                                        <tr className={`bg-gradient-to-r ${tab === 'online' ? 'from-blue-50 to-indigo-50 border-blue-200' : 'from-orange-50 to-red-50 border-orange-200'} border-b-2`}>
+                                                                        <tr className={`bg-gradient-to-r ${tab === "online" ? "from-blue-50 to-indigo-50 border-blue-200" : "from-orange-50 to-red-50 border-orange-200"} border-b-2`}>
                                                                             <th className="p-3 text-left font-semibold text-gray-700">Operator</th>
-                                                                            {allMonthKeys.map(m => <th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
-                                                                            <th className={`p-3 text-right font-semibold ${tab === 'online' ? 'bg-blue-50' : 'bg-orange-50'}`}>TOTAL</th>
+                                                                            {allMonthKeys.map((m) => (
+                                                                                <th key={m} className="p-3 text-right font-semibold text-gray-700">
+                                                                                    {monthNames[m.split("-")[1]] ?? m}
+                                                                                </th>
+                                                                            ))}
+                                                                            <th className={`p-3 text-right font-semibold ${tab === "online" ? "bg-blue-50" : "bg-orange-50"}`}>TOTAL</th>
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
@@ -365,22 +356,12 @@ export function AdminRegulatorDataTables() {
                                                                             </tr>
                                                                         ) : (
                                                                             stakeData.map((row, idx) => (
-                                                                                <motion.tr
-                                                                                    key={idx}
-                                                                                    initial={{ opacity: 0, x: -10 }}
-                                                                                    animate={{ opacity: 1, x: 0 }}
-                                                                                    transition={{ delay: idx * 0.05 }}
-                                                                                    className="border-b hover:bg-gray-50"
-                                                                                >
+                                                                                <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-gray-50">
                                                                                     <td className="p-3 font-medium">{row.operator}</td>
-                                                                                    {allMonthKeys.map(m => (
-                                                                                        <td key={m} className="p-3 text-right font-mono">
-                                                                                            {row[m] ? formatCurrency(row[m] as number) : ''}
-                                                                                        </td>
+                                                                                    {allMonthKeys.map((m) => (
+                                                                                        <td key={m} className="p-3 text-right font-mono">{row[m] ? formatCurrency(row[m] as number) : ""}</td>
                                                                                     ))}
-                                                                                    <td className={`p-3 text-right font-mono font-bold ${tab === 'online' ? 'bg-blue-50' : 'bg-orange-50'}`}>
-                                                                                        {formatCurrency(row.TOTAL)}
-                                                                                    </td>
+                                                                                    <td className={`p-3 text-right font-mono font-bold ${tab === "online" ? "bg-blue-50" : "bg-orange-50"}`}>{formatCurrency(row.TOTAL)}</td>
                                                                                 </motion.tr>
                                                                             ))
                                                                         )}
@@ -390,6 +371,7 @@ export function AdminRegulatorDataTables() {
                                                             </CardContent>
                                                         </Card>
 
+                                                        {/* Payout Table */}
                                                         <Card>
                                                             <CardHeader>
                                                                 <CardTitle className="text-lg">
@@ -397,36 +379,26 @@ export function AdminRegulatorDataTables() {
                                                                     <Badge className="ml-2 bg-amber-100 text-amber-800">PAYOUT</Badge>
                                                                 </CardTitle>
                                                             </CardHeader>
-
                                                             <CardContent>
                                                                 <div className="overflow-x-auto">
                                                                     <table className="w-full border-collapse text-sm">
                                                                         <thead>
                                                                         <tr className="bg-gradient-to-r from-amber-50 to-orange-50 border-b-2 border-amber-200">
                                                                             <th className="p-3 text-left">Operator</th>
-                                                                            {allMonthKeys.map(m => (
-                                                                                <th key={m} className="p-3 text-right">
-                                                                                    {monthNames[m.split('-')[1]] ?? m}
-                                                                                </th>
+                                                                            {allMonthKeys.map((m) => (
+                                                                                <th key={m} className="p-3 text-right">{monthNames[m.split("-")[1]] ?? m}</th>
                                                                             ))}
                                                                             <th className="p-3 text-right bg-amber-50">TOTAL</th>
                                                                         </tr>
                                                                         </thead>
-
                                                                         <tbody>
                                                                         {mergedData.map((row, idx) => (
                                                                             <tr key={idx} className="border-b hover:bg-gray-50">
                                                                                 <td className="p-3 font-medium">{row.operator}</td>
-
-                                                                                {allMonthKeys.map(m => (
-                                                                                    <td key={m} className="p-3 text-right font-mono">
-                                                                                        {formatCurrency(row[`${m}_payout`] as number)}
-                                                                                    </td>
+                                                                                {allMonthKeys.map((m) => (
+                                                                                    <td key={m} className="p-3 text-right font-mono">{formatCurrency(row[`${m}_payout`] as number)}</td>
                                                                                 ))}
-
-                                                                                <td className="p-3 text-right font-mono font-bold bg-amber-50">
-                                                                                    {formatCurrency(row.TOTAL_PAYOUT as number)}
-                                                                                </td>
+                                                                                <td className="p-3 text-right font-mono font-bold bg-amber-50">{formatCurrency(row.TOTAL_PAYOUT as number)}</td>
                                                                             </tr>
                                                                         ))}
                                                                         </tbody>
@@ -449,44 +421,29 @@ export function AdminRegulatorDataTables() {
                                                                         <thead>
                                                                         <tr className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
                                                                             <th className="p-3 text-left font-semibold text-gray-700">Operator</th>
-                                                                            {allMonthKeys.map(m => <th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split('-')[1]] ?? m}</th>)}
+                                                                            {allMonthKeys.map((m) => (
+                                                                                <th key={m} className="p-3 text-right font-semibold text-gray-700">{monthNames[m.split("-")[1]] ?? m}</th>
+                                                                            ))}
                                                                             <th className="p-3 text-right font-semibold bg-green-100">TOTAL</th>
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {ggrData.length === 0 ? (
-                                                                            <tr>
-                                                                                <td colSpan={allMonthKeys.length + 2} className="p-6">
-                                                                                    <NoDataState message="No GGR data available for this regulator." />
-                                                                                </td>
+                                                                        {ggrData.map((row, idx) => (
+                                                                            <tr key={idx} className="border-b hover:bg-gray-50">
+                                                                                <td className="p-3 font-medium">{row.operator}</td>
+                                                                                {allMonthKeys.map((m) => (
+                                                                                    <td key={m} className="p-3 text-right font-mono text-green-700">{row[m] ? formatCurrency(row[m] as number) : ""}</td>
+                                                                                ))}
+                                                                                <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">{formatCurrency(row.TOTAL)}</td>
                                                                             </tr>
-                                                                        ) : (
-                                                                            ggrData.map((row, idx) => (
-                                                                                <motion.tr
-                                                                                    key={idx}
-                                                                                    initial={{ opacity: 0, x: -10 }}
-                                                                                    animate={{ opacity: 1, x: 0 }}
-                                                                                    transition={{ delay: idx * 0.05 }}
-                                                                                    className="border-b hover:bg-gray-50"
-                                                                                >
-                                                                                    <td className="p-3 font-medium">{row.operator}</td>
-                                                                                    {allMonthKeys.map(m => (
-                                                                                        <td key={m} className="p-3 text-right font-mono text-green-700">
-                                                                                            {row[m] ? formatCurrency(row[m] as number) : ''}
-                                                                                        </td>
-                                                                                    ))}
-                                                                                    <td className="p-3 text-right font-mono font-bold text-green-800 bg-green-50">
-                                                                                        {formatCurrency(row.TOTAL)}
-                                                                                    </td>
-                                                                                </motion.tr>
-                                                                            ))
-                                                                        )}
+                                                                        ))}
                                                                         </tbody>
                                                                     </table>
                                                                 </div>
                                                             </CardContent>
                                                         </Card>
 
+                                                        {/* GGR % Table */}
                                                         <Card>
                                                             <CardHeader>
                                                                 <CardTitle className="text-lg">
@@ -494,36 +451,26 @@ export function AdminRegulatorDataTables() {
                                                                     <Badge className="ml-2 bg-purple-100 text-purple-800">GGR %</Badge>
                                                                 </CardTitle>
                                                             </CardHeader>
-
                                                             <CardContent>
                                                                 <div className="overflow-x-auto">
                                                                     <table className="w-full border-collapse text-sm">
                                                                         <thead>
                                                                         <tr className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b-2 border-purple-200">
                                                                             <th className="p-3 text-left">Operator</th>
-                                                                            {allMonthKeys.map(m => (
-                                                                                <th key={m} className="p-3 text-right">
-                                                                                    {monthNames[m.split('-')[1]] ?? m}
-                                                                                </th>
+                                                                            {allMonthKeys.map((m) => (
+                                                                                <th key={m} className="p-3 text-right">{monthNames[m.split("-")[1]] ?? m}</th>
                                                                             ))}
                                                                             <th className="p-3 text-right bg-purple-50">TOTAL</th>
                                                                         </tr>
                                                                         </thead>
-
                                                                         <tbody>
                                                                         {mergedData.map((row, idx) => (
                                                                             <tr key={idx} className="border-b hover:bg-gray-50">
                                                                                 <td className="p-3 font-medium">{row.operator}</td>
-
-                                                                                {allMonthKeys.map(m => (
-                                                                                    <td key={m} className="p-3 text-right font-mono">
-                                                                                        {formatPercent(row[`${m}_ggr_pct`] as number)}
-                                                                                    </td>
+                                                                                {allMonthKeys.map((m) => (
+                                                                                    <td key={m} className="p-3 text-right font-mono">{formatPercent(row[`${m}_ggr_pct`] as number)}</td>
                                                                                 ))}
-
-                                                                                <td className="p-3 text-right font-mono font-bold bg-purple-50">
-                                                                                    {formatPercent(row.TOTAL_GGR_PCT as number)}
-                                                                                </td>
+                                                                                <td className="p-3 text-right font-mono font-bold bg-purple-50">{formatPercent(row.TOTAL_GGR_PCT as number)}</td>
                                                                             </tr>
                                                                         ))}
                                                                         </tbody>

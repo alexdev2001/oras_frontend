@@ -27,7 +27,7 @@ import { OperatorUserManagement } from '@/components/admin/tabs/OperatorUserMana
 import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.tsx';
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
-import {AdminRegulatorDataTables} from "@/components/admin/AdminRegulatorDataTables.tsx";
+import {AdminRegulatorDataTables, type RegulatorAnalytics} from "@/components/admin/AdminRegulatorDataTables.tsx";
 import type {DecodedToken, RegulatorSubmission} from "@/components/regulator/RegulatorDashboard.tsx";
 import {jwtDecode} from "jwt-decode";
 import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/RegulatorSubmissions.tsx";
@@ -80,6 +80,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
     const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
     const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+    const [regulatorAnalytics, setRegulatorAnalytics] = useState<RegulatorAnalytics[]>([]);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -105,7 +106,9 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         loadRegulatorMetrics();
         loadSubmissions();
         loadAnalytics();
+        loadRegulatorAnalytics();
     }, []);
+
     const loadRegulators = async () => {
         try {
             const regulatorsData = await managementAPI.getRegulators();
@@ -114,6 +117,18 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             console.error('Failed to load regulators:', error);
         }
     };
+
+    const loadRegulatorAnalytics = async () => {
+        try {
+            const regulatorAnalyticsData = await analyticsAPI.getRegulatorAnalyticsAdmin();
+            if (regulatorAnalyticsData) {
+                setRegulatorAnalytics(regulatorAnalyticsData);
+                console.log('regulator analytics:', regulatorAnalyticsData);
+            }
+        } catch (e) {
+            console.error('Failed to load regulator analytics:', e);
+        }
+    }
 
     const loadSubmissions = async () => {
         try {
@@ -200,17 +215,27 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             <div className="text-center ">
                 <p className="text-gray-600">
                     {value === 'dashboard' && (
-                        <AdminRegulatorDataTables/>
+                        <AdminRegulatorDataTables
+                            analytics={regulatorAnalytics}
+                            selectedRegulator={selectedRegulator}
+                            selectedMonth={selectedMonth}
+                        />
                     )}
                     {value === 'metrics' && (
                         <MetricsTab
                             metrics={metrics}
                             selectedRegulator={selectedRegulator}
                             selectedMonth={selectedMonth}
+                            regulators={regulators}
                         />
                     )}
                     {value === 'submissions' && (
-                        <AdminRegulatorSubmissions submissions={submissions}/>
+                        <AdminRegulatorSubmissions
+                            submissions={submissions}
+                            selectedRegulator={selectedRegulator}
+                            selectedMonth={selectedMonth}
+                            regulators={regulators}
+                        />
                     )}
                 </p>
                 {value === 'users' && <OperatorUserManagement />}
@@ -389,7 +414,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                                 {regulators.map((reg) => (
                                                     <SelectItem
                                                         key={reg.regulator_id}
-                                                        value={reg.regulator_id.toString()}
+                                                        value={reg.regulator_name}
                                                     >
                                                         {reg.regulator_name}
                                                     </SelectItem>
