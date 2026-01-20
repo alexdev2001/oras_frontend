@@ -473,7 +473,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                     )}
 
                                     <p className="text-sm text-gray-500">
-                                        Accepted formats: PDF, DOC, DOCX, XLSX, XLS, CSV (Max 10MB)
+                                        Accepted formats: XLSX, XLS, CSV (Max 10MB)
                                     </p>
                                 </div>
 

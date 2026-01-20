@@ -13,7 +13,7 @@ import {
     X,
     Landmark,
     Calendar,
-    Grid
+    Grid, TrendingUp
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnalyticsOverview } from './tabs/AnalyticsOverview.tsx';
@@ -33,6 +33,7 @@ import {jwtDecode} from "jwt-decode";
 import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/RegulatorSubmissions.tsx";
 import type { DashboardAnalytics } from '@/types/report';
 import { analyticsAPI } from '@/utils/API';
+import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/RegulatorPredictionsTab.tsx";
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -62,6 +63,7 @@ const regulatorTabs = [
     { value: 'dashboard', label: 'Overview', icon: Grid },
     { value: 'metrics', label: 'Metrics', icon: BarChart3 },
     { value: 'submissions', label: 'Submissions', icon: FileText },
+    { value: 'predictions', label: 'Predictions', icon: TrendingUp },
     { value: 'users', label: 'User Management', icon: Users },
 ];
 
@@ -235,6 +237,12 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             selectedRegulator={selectedRegulator}
                             selectedMonth={selectedMonth}
                             regulators={regulators}
+                        />
+                    )}
+                    {value === 'predictions' && (
+                        <RegulatorPredictionsTab
+                            regulatorAnalytics={regulatorAnalytics}
+                            selectedRegulator={selectedRegulator}
                         />
                     )}
                 </p>

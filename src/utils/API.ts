@@ -448,6 +448,29 @@ export const analyticsAPI = {
 
         if (!response.ok) throw new Error("Failed to fetch regulator metrics");
         return response.json();
+    },
+
+    async getRegulatorPredictions(params: {
+        regulator: string;
+        months: number;
+    }) {
+        const response = await fetch(
+            `${BASE_URL}/api/v1/regulator-predictions`,
+            {
+                method: "POST",
+                headers: {
+                    ...getAuthHeader(),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(params),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch regulator predictions");
+        }
+
+        return response.json();
     }
 };
 

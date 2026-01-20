@@ -65,7 +65,7 @@ export function AdminRegulatorSubmissions({
             const matchesRegulator =
                 !selectedRegulatorId || s.regulatorId === selectedRegulatorId;
             const matchesMonth =
-                selectedMonth === "all" || s.submittedAt.startsWith(selectedMonth);
+                selectedMonth === "all" || s.title.includes(selectedMonth);
             return matchesRegulator && matchesMonth;
         });
     }, [submissions, selectedRegulatorId, selectedMonth]);
