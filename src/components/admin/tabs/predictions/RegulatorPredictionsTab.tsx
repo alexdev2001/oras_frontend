@@ -44,19 +44,18 @@ export function RegulatorPredictionsTab({
     return (
         <div className="space-y-6">
             {/* Header */}
-            <Card className="border-dashed border-2 border-indigo-300 bg-indigo-50/40">
+            <Card className="border-dashed border-2 border-indigo-300 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-900/20">
                 <CardHeader className="flex flex-row items-center gap-3">
-                    <TrendingUp className="size-6 text-indigo-600" />
+                    <TrendingUp className="size-6 text-indigo-600 dark:text-indigo-400" />
                     <div>
                         <CardTitle>Predictive Analytics</CardTitle>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
                             Forecasted data based on historical regulator analytics
                         </p>
                     </div>
                 </CardHeader>
             </Card>
 
-            {/* ✅ Controlled Dialog */}
             <PredictionPeriodDialog
                 open={dialogOpen}
                 regulators={regulators}

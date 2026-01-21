@@ -93,7 +93,7 @@ export function ReportInstructionsDialog({
                                     ].map((field) => (
                                         <div
                                             key={field}
-                                            className="border rounded-md px-3 py-2 bg-gray-50"
+                                            className="border rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                                         >
                                             {field}
                                         </div>
@@ -133,10 +133,10 @@ export function ReportInstructionsDialog({
 
                                 {/* ⬇️ Horizontal scroll ONLY here */}
                                 <div className="relative">
-                                    <div className="overflow-x-auto overscroll-x-contain rounded-lg border bg-gray-50">
+                                    <div className="overflow-x-auto overscroll-x-contain rounded-lg border bg-gray-50 dark:bg-gray-800">
                                         <div className="min-w-[900px]">
                                             {/* Header */}
-                                            <div className="grid grid-cols-10 text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-2">
+                                            <div className="grid grid-cols-10 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-3 py-2">
                                                 <div>No.</div>
                                                 <div className="col-span-2">Operator</div>
                                                 <div className="text-right">Stake</div>
@@ -186,11 +186,11 @@ export function ReportInstructionsDialog({
                                             ].map((row) => (
                                                 <div
                                                     key={row.no}
-                                                    className="grid grid-cols-10 px-3 py-2 text-xs border-t bg-white"
+                                                    className="grid grid-cols-10 px-3 py-2 text-xs border-t bg-white dark:bg-gray-900"
                                                 >
-                                                    <div className="text-gray-500">{row.no}</div>
+                                                    <div className="text-gray-500 dark:text-gray-400">{row.no}</div>
 
-                                                    <div className="col-span-2 font-medium text-gray-800 truncate">
+                                                    <div className="col-span-2 font-medium text-gray-800 dark:text-gray-200 truncate">
                                                         {row.operator}
                                                     </div>
 
@@ -199,15 +199,15 @@ export function ReportInstructionsDialog({
                                                     <div className="text-right tabular-nums">{row.cancelled}</div>
                                                     <div className="text-right tabular-nums">{row.open}</div>
 
-                                                    <div className="text-right tabular-nums font-semibold text-indigo-600">
+                                                    <div className="text-right tabular-nums font-semibold text-indigo-600 dark:text-indigo-400">
                                                         {row.ggr}
                                                     </div>
 
-                                                    <div className="text-right tabular-nums text-green-700">
+                                                    <div className="text-right tabular-nums text-green-700 dark:text-green-400">
                                                         {row.igj}
                                                     </div>
 
-                                                    <div className="text-right tabular-nums text-blue-700">
+                                                    <div className="text-right tabular-nums text-blue-700 dark:text-blue-400">
                                                         {row.fudogo}
                                                     </div>
                                                 </div>
@@ -216,7 +216,7 @@ export function ReportInstructionsDialog({
                                     </div>
                                 </div>
 
-                                <p className="text-xs text-gray-500 italic">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 italic">
                                     • One operator per row
                                     • One reporting month per file
                                     • GGR = Stake − Payout

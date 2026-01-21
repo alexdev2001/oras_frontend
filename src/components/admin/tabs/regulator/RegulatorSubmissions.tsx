@@ -263,7 +263,7 @@ export function AdminRegulatorSubmissions({
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: i * 0.04 }}
-                                                className="border rounded-lg p-4 hover:bg-gray-50"
+                                                className="border rounded-lg p-4 hover:bg-muted/50 transition-all hover:shadow-md"
                                             >
                                                 <div className="flex justify-between mb-2">
                                                     <div>

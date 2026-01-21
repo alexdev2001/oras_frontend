@@ -6,6 +6,7 @@ import { authAPI } from '@/utils/API.ts';
 import { jwtDecode } from "jwt-decode";
 import type {DecodedToken} from "@/types/token.ts";
 import {RegulatorDashboard} from "@/components/regulator/RegulatorDashboard.tsx";
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 export default function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -61,26 +62,42 @@ export default function App() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-background">
                 <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                    <p className="text-gray-600">Loading...</p>
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ring mb-4"></div>
+                    <p className="text-muted-foreground">Loading...</p>
                 </div>
             </div>
         );
     }
 
     if (!isAuthenticated) {
-        return <AuthForm onAuthSuccess={handleAuthSuccess} />;
+        return (
+            <ThemeProvider>
+                <AuthForm onAuthSuccess={handleAuthSuccess} />
+            </ThemeProvider>
+        );
     }
 
     if (userRole === 'admin') {
-        return <AdminDashboard onSignOut={handleSignOut} />;
+        return (
+            <ThemeProvider>
+                <AdminDashboard onSignOut={handleSignOut} />
+            </ThemeProvider>
+        );
     }
 
     if (userRole === 'regulator') {
-        return <RegulatorDashboard onSignOut={handleSignOut} />;
+        return (
+            <ThemeProvider>
+                <RegulatorDashboard onSignOut={handleSignOut} />
+            </ThemeProvider>
+        );
     }
 
-    return <OperatorDashboard onSignOut={handleSignOut} />;
+    return (
+        <ThemeProvider>
+            <OperatorDashboard onSignOut={handleSignOut} />
+        </ThemeProvider>
+    );
 }

@@ -146,7 +146,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                 onOpenChange={setShowInstructions}
             />
 
-            <div className="min-h-screen bg-gray-50 py-8">
+            <div className="min-h-screen bg-background py-8">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Button variant="ghost" onClick={onCancel} className="mb-4">
                         <ArrowLeft className="size-4 mr-2" />
@@ -178,7 +178,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                                 {/* File Upload Area */}
                                 <div className="space-y-2">
                                     <Label htmlFor="excel-file">Excel Report File</Label>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
+                                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-ring transition-colors">
                                         <input
                                             id="excel-file"
                                             type="file"
@@ -192,7 +192,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                                                     <FileSpreadsheet className="size-12 mx-auto text-green-600" />
                                                     <div>
                                                         <p className="font-medium text-green-900">{selectedFile.name}</p>
-                                                        <p className="text-sm text-gray-500">
+                                                        <p className="text-sm text-muted-foreground">
                                                             {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                                                         </p>
                                                     </div>
@@ -211,12 +211,12 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                                                 </div>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    <Upload className="size-12 mx-auto text-gray-400" />
+                                                    <Upload className="size-12 mx-auto text-muted-foreground" />
                                                     <div>
                                                         <p className="font-medium">Click to upload Excel file</p>
-                                                        <p className="text-sm text-gray-500">or drag and drop</p>
+                                                        <p className="text-sm text-muted-foreground">or drag and drop</p>
                                                     </div>
-                                                    <p className="text-xs text-gray-400">
+                                                    <p className="text-xs text-muted-foreground">
                                                         Supported formats: .xlsx, .xls (Max 10MB)
                                                     </p>
                                                 </div>

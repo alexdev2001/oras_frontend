@@ -34,6 +34,7 @@ import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/Regul
 import type { DashboardAnalytics } from '@/types/report';
 import { analyticsAPI } from '@/utils/API';
 import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/RegulatorPredictionsTab.tsx";
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -289,7 +290,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const months = getLast12Months();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+        <div className="min-h-screen bg-background">
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -299,6 +300,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             <p className="text-blue-100 mt-1 text-sm font-medium">Gaming Operator Reporting System</p>
                         </div>
                         <div className="flex items-center gap-4">
+                            <ThemeToggle />
                             <div className="text-right mr-2 hidden sm:block">
                                 <p className="text-sm font-medium text-white">{user?.email}</p>
                                 <p className="text-xs text-blue-100">Administrator</p>
@@ -319,19 +321,19 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Mode Switcher & Filters Card */}
-                <Card className="mb-6 shadow-md border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="mb-6 shadow-md border-0 bg-card/80 backdrop-blur-sm">
                     <CardContent className="p-6">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                             {/* Mode Switcher */}
                             <div className="flex flex-col gap-2">
-                                <Label className="text-sm font-semibold text-gray-700">View Mode</Label>
-                                <div className="inline-flex rounded-lg bg-gradient-to-r from-slate-100 to-slate-50 p-1 shadow-inner">
+                                <Label className="text-sm font-semibold text-foreground">View Mode</Label>
+                                <div className="inline-flex rounded-lg bg-muted p-1 shadow-inner">
                                     <button
                                         onClick={() => setMode('regulator')}
                                         className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
                                             mode === 'regulator'
                                                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md transform scale-105'
-                                                : 'text-gray-700 hover:text-gray-900'
+                                                : 'text-foreground hover:text-foreground/80'
                                         }`}
                                     >
                                         <FileCheck className="size-4 inline mr-2" />
@@ -342,7 +344,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                         className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
                                             mode === 'operator'
                                                 ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md transform scale-105'
-                                                : 'text-gray-700 hover:text-gray-900'
+                                                : 'text-foreground hover:text-foreground/80'
                                         }`}
                                     >
                                         <Building2 className="size-4 inline mr-2" />
@@ -357,12 +359,12 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                 <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1 lg:justify-end">
                                     {/* Operator Filter */}
                                     <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                        <Label htmlFor="operator-filter" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                        <Label htmlFor="operator-filter" className="text-sm font-semibold text-foreground flex items-center gap-2">
                                             <Filter className="size-4 text-indigo-600" />
                                             Operator
                                         </Label>
                                         <Select value={selectedOperator} onValueChange={setSelectedOperator}>
-                                            <SelectTrigger id="operator-filter" className="w-full sm:w-[220px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+                                            <SelectTrigger id="operator-filter" className="w-full sm:w-[220px] border-input focus:border-ring focus:ring-ring">
                                                 <SelectValue placeholder="Loading operators..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -380,12 +382,12 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
 
                                     {/* Month Filter */}
                                     <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                        <Label htmlFor="month-filter" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                        <Label htmlFor="month-filter" className="text-sm font-semibold text-foreground flex items-center gap-2">
                                             <Filter className="size-4 text-indigo-600" />
                                             Month
                                         </Label>
                                         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                            <SelectTrigger id="month-filter" className="w-full sm:w-[200px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+                                            <SelectTrigger id="month-filter" className="w-full sm:w-[200px] border-input focus:border-ring focus:ring-ring">
                                                 <SelectValue placeholder="All Months" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -411,7 +413,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                     <div className="flex flex-col gap-2 w-full sm:w-auto">
                                         <Label
                                             htmlFor="regulator-filter"
-                                            className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+                                            className="text-sm font-semibold text-foreground flex items-center gap-2"
                                         >
                                             <Landmark className="size-4 text-purple-600" />
                                             Regulator
@@ -422,7 +424,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                         >
                                             <SelectTrigger
                                                 id="regulator-filter"
-                                                className="w-full sm:w-[220px] border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                                className="w-full sm:w-[220px] border-input focus:border-ring focus:ring-ring"
                                             >
                                                 <SelectValue placeholder="Loading regulators..." />
                                             </SelectTrigger>
@@ -448,7 +450,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                     <div className="flex flex-col gap-2 w-full sm:w-auto">
                                         <Label
                                             htmlFor="regulator-month-filter"
-                                            className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+                                            className="text-sm font-semibold text-foreground flex items-center gap-2"
                                         >
                                             <Calendar className="size-4 text-purple-600" />
                                             Month
@@ -459,7 +461,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                         >
                                             <SelectTrigger
                                                 id="regulator-month-filter"
-                                                className="w-full sm:w-[200px] border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                                className="w-full sm:w-[200px] border-input focus:border-ring focus:ring-ring"
                                             >
                                                 <SelectValue placeholder="All Months" />
                                             </SelectTrigger>
@@ -489,7 +491,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                 <MonthlySummaryGenerator mode={mode}/>
 
                 {/* Tabs Section */}
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="shadow-lg border-0 bg-card/80 backdrop-blur-sm">
                     <CardContent className="p-6">
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
                             {/* Mobile Hamburger Menu */}
@@ -511,7 +513,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                 </Button>
 
                                 {mobileMenuOpen && (
-                                    <div className="mt-2 border rounded-lg bg-white shadow-lg overflow-hidden">
+                                    <div className="mt-2 border rounded-lg bg-card shadow-lg overflow-hidden">
                                         {tabs.map((tab) => {
                                             const Icon = tab.icon;
                                             return (
@@ -519,8 +521,8 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                                                     key={tab.value}
                                                     className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors ${
                                                         activeTab === tab.value
-                                                            ? 'bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 font-semibold border-l-4 border-indigo-600'
-                                                            : 'text-gray-700 hover:bg-gray-50'
+                                                            ? 'bg-muted text-foreground font-semibold border-l-4 border-ring'
+                                                            : 'text-muted-foreground hover:bg-muted/50'
                                                     }`}
                                                     onClick={() => {
                                                         setActiveTab(tab.value);
@@ -537,7 +539,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             </div>
 
                             {/* Desktop Tabs */}
-                            <TabsList className="hidden lg:inline-flex mb-6 bg-gradient-to-r from-slate-100 to-slate-50 p-1">
+                            <TabsList className="hidden lg:inline-flex mb-6 bg-muted p-1">
                                 {tabs.map(tab => (
                                     <TabsTrigger
                                         key={tab.value}

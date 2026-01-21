@@ -50,17 +50,17 @@ export function FilePreview({
     }, [reportId, extension]);
 
     return (
-        <div className="mt-4 rounded-xl border bg-gradient-to-br from-slate-50 to-white p-4">
+        <div className="mt-4 rounded-xl border bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 p-4">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-                        <FileText className="size-5 text-indigo-600" />
+                    <div className="h-10 w-10 rounded-lg bg-indigo-100/20 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <FileText className="size-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-gray-800 truncate max-w-[260px]">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate max-w-[260px]">
                             {fileName}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                             {extension?.toUpperCase()} document
                         </p>
                     </div>
@@ -69,11 +69,11 @@ export function FilePreview({
             </div>
 
             {loading ? (
-                <div className="p-6 text-center text-gray-500">
+                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
                     Loading preview…
                 </div>
             ) : rows && rows.length > 0 ? (
-                <div className="border rounded-lg overflow-auto max-h-[260px] bg-white">
+                <div className="border rounded-lg overflow-auto max-h-[260px] bg-white dark:bg-slate-800">
                     <table className="min-w-full text-sm border-collapse">
                         <tbody>
                         {rows.map((row, i) => (
@@ -81,7 +81,7 @@ export function FilePreview({
                                 {row.map((cell, j) => (
                                     <td
                                         key={j}
-                                        className="px-3 py-2 border-r last:border-r-0 whitespace-nowrap text-gray-700"
+                                        className="px-3 py-2 border-r last:border-r-0 whitespace-nowrap text-gray-700 dark:text-gray-200"
                                     >
                                         {cell ?? ''}
                                     </td>
@@ -92,7 +92,7 @@ export function FilePreview({
                     </table>
                 </div>
             ) : (
-                <div className="p-6 text-center text-gray-500">
+                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
                     No previewable data
                 </div>
             )}

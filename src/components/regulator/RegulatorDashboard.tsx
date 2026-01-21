@@ -21,6 +21,7 @@ import {ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Toolt
 import * as XLSX from 'xlsx';
 import {FilePreview} from "@/components/regulator/FilePreview.tsx";
 import type {Regulator} from "@/types/regulator.ts";
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -116,6 +117,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
     const [showInstructions, setShowInstructions] = useState(false);
     const [uniqueOperators, setUniqueOperators] = useState<UniqueRegulatorUser[]>([]);
     const [regulatorId, setRegulatorId] = useState<number | null>(null);
@@ -268,10 +270,10 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError(null);
+
         if (!month || !file) {
-            setAlertTitle("Submission Error");
-            setAlertMessage("Please select a reporting month and upload a file.");
-            setShowAlert(true);
+            setFormError("Please select a reporting month and upload a file.");
             return;
         }
 
@@ -293,9 +295,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
             }
         } catch (error: any) {
             console.error('Failed to submit:', error);
-            setAlertTitle("Submission Failed");
-            setAlertMessage(error.message || 'Failed to submit file. Check console for network errors.');
-            setShowAlert(true);
+
+            const backendMessage =
+                error?.response?.data?.detail ||
+                error?.message ||
+                'Submission failed. Please check your file format.';
+
+            setFormError(backendMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -345,7 +351,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 );
             default:
                 return (
-                    <Badge className="bg-gray-100 text-gray-800 flex items-center gap-1">
+                    <Badge className="bg-muted text-muted-foreground flex items-center gap-1">
                         <XCircle className="size-3" />
                         Unknown
                     </Badge>
@@ -420,7 +426,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             <Button
                                 variant="outline"
                                 onClick={() => setShowSubmissionForm(false)}
-                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                                className="bg-card/10 border-border text-foreground hover:bg-card/20 backdrop-blur-sm"
                             >
                                 Cancel
                             </Button>
@@ -439,6 +445,12 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                {formError && (
+                                    <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                        <strong className="block font-medium mb-1">Error</strong>
+                                        {formError}
+                                    </div>
+                                )}
                                 {/* Month */}
                                 <div className="space-y-2">
                                     <Label htmlFor="month">Reporting Month *</Label>
@@ -484,23 +496,26 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                 </div>
 
                                 {/* File Upload */}
+                                {/* File Upload */}
                                 <div className="space-y-2">
                                     <Label htmlFor="file">Upload File *</Label>
+
                                     <Input
                                         id="file"
                                         type="file"
                                         accept=".pdf,.doc,.docx,.xlsx,.xls,.csv"
                                         onChange={handleFileChange}
                                         required
+                                        className={formError ? "border-red-500 focus-visible:ring-red-500" : ""}
                                     />
 
                                     {file && (
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-muted-foreground">
                                             Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                                         </p>
                                     )}
 
-                                    <p className="text-sm text-gray-500">
+                                    <p className="text-sm text-muted-foreground">
                                         Accepted formats: XLSX, XLS, CSV (Max 10MB)
                                     </p>
                                 </div>
@@ -538,7 +553,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+        <div className="min-h-screen bg-background">
             <ReportInstructionsDialog
                 open={showInstructions}
                 onOpenChange={(open) => {
@@ -568,12 +583,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             </p>
                         </div>
                         <div className="flex items-center gap-2">
+                            <ThemeToggle />
                             <Button
                                 onClick={() => {
                                     setShowInstructions(true);
                                     setShowSubmissionForm(false);
                                 }}
-                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                                className="bg-card/10 border-border text-foreground hover:bg-card/20 backdrop-blur-sm"
                             >
                                 <Plus className="size-4 mr-2" />
                                 Submit Document
@@ -581,7 +597,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             <Button
                                 variant="outline"
                                 onClick={handleSignOut}
-                                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                                className="bg-card/10 border-border text-foreground hover:bg-card/20 hover:text-foreground backdrop-blur-sm"
                             >
                                 <LogOut className="size-4 mr-2" />
                                 Sign Out
@@ -602,8 +618,8 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                 variant={activeView === tab.id ? 'default' : 'ghost'}
                                 onClick={() => setActiveView(tab.id as any)}
                                 className={activeView === tab.id
-                                    ? 'bg-white text-indigo-600 hover:bg-white/90'
-                                    : 'text-white hover:bg-white/10'
+                                    ? 'bg-card text-primary hover:bg-card/90'
+                                    : 'text-foreground hover:bg-muted/50'
                                 }
                             >
                                 <tab.icon className="size-4 mr-2" />
@@ -658,11 +674,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                 </CardHeader>
                                 <CardContent>
                                     {isAnalyticsLoading ? (
-                                        <div className="h-[240px] flex items-center justify-center text-gray-500">
+                                        <div className="h-[240px] flex items-center justify-center text-muted-foreground">
                                             Loading analytics...
                                         </div>
                                     ) : monthlyTrendData.length === 0 ? (
-                                        <div className="h-[240px] flex items-center justify-center text-gray-400">
+                                        <div className="h-[240px] flex items-center justify-center text-muted-foreground">
                                             No analytics data available yet
                                         </div>
                                     ) : (
@@ -745,11 +761,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                 </CardHeader>
                                 <CardContent>
                                     {isAnalyticsLoading ? (
-                                        <div className="h-[240px] flex items-center justify-center text-gray-500">
+                                        <div className="h-[240px] flex items-center justify-center text-muted-foreground">
                                             Loading analytics...
                                         </div>
                                     ) : topOperators.length === 0 ? (
-                                        <div className="h-[240px] flex items-center justify-center text-gray-400">
+                                        <div className="h-[240px] flex items-center justify-center text-muted-foreground">
                                             No operator analytics available
                                         </div>
                                     ) : (
@@ -788,20 +804,20 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
                         {/* Licensed Operators */}
                         <div className="mb-10">
-                            <Card className="border border-gray-200">
+                            <Card className="border border-border">
                                 <CardContent className="pt-5 space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-sm font-medium text-gray-600">
+                                        <p className="text-sm font-medium text-muted-foreground">
                                             Licensed Operators
                                         </p>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs text-muted-foreground">
                       {uniqueOperators.length} total
                     </span>
                                     </div>
 
                                     {uniqueOperators.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <Users className="size-12 mx-auto mb-4 text-gray-400" />
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            <Users className="size-12 mx-auto mb-4 text-muted-foreground" />
                                             <p>No licensed operators found</p>
                                         </div>
                                     ) : (
@@ -812,14 +828,14 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                 return (
                                                     <div
                                                         key={op.user_id}
-                                                        className="flex items-center gap-3 px-4 py-2 rounded-full border bg-gray-50 hover:bg-gray-100 transition"
+                                                        className="flex items-center gap-3 px-4 py-2 rounded-full border bg-muted hover:bg-muted/80 transition"
                                                     >
                                                         {/* Icon avatar */}
                                                         <div
                                                             className={`h-9 w-9 rounded-full flex items-center justify-center ${
                                                                 isActive
-                                                                    ? 'bg-green-100 text-green-600'
-                                                                    : 'bg-gray-200 text-gray-500'
+                                                                    ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                                                                    : 'bg-muted text-muted-foreground'
                                                             }`}
                                                         >
                                                             <Building2 className="h-4 w-4" />
@@ -827,11 +843,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
                                                         {/* Operator info */}
                                                         <div className="flex flex-col leading-tight">
-                              <span className="text-sm font-medium text-gray-800 max-w-[140px] truncate">
+                              <span className="text-sm font-medium text-foreground max-w-[140px] truncate">
                                 {op.full_name ?? op.email}
                               </span>
 
-                                                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                                                 {isActive ? (
                                                                     <>
                                                                         <UserCheck className="h-3 w-3 text-green-500" />
@@ -839,7 +855,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                                     </>
                                                                 ) : (
                                                                     <>
-                                                                        <UserX className="h-3 w-3 text-gray-400" />
+                                                                        <UserX className="h-3 w-3 text-muted-foreground" />
                                                                         Inactive
                                                                     </>
                                                                 )}
@@ -979,7 +995,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                 initial={{ opacity: 0, x: -20 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: index * 0.05 }}
-                                                className="border rounded-lg p-4 hover:bg-gray-50 transition-all hover:shadow-md"
+                                                className="border rounded-lg p-4 hover:bg-muted/50 transition-all hover:shadow-md"
                                             >
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex-1">

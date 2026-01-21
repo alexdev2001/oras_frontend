@@ -154,25 +154,25 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
             {/* -------- Main Card -------- */}
             <div
                 className={`
-          mb-6 rounded-lg border bg-white p-4
+          mb-6 rounded-lg border bg-card p-4
           flex items-end gap-6
-          ${isRegulator ? "border-purple-200" : "border-gray-200"}
+          ${isRegulator ? "border-purple-200 dark:border-purple-800" : "border-border"}
         `}
             >
                 <div className="flex flex-col w-64">
-                    <Label className="text-sm font-medium mb-1 text-gray-700">
+                    <Label className="text-sm font-medium mb-1 text-foreground">
                         {isRegulator
                             ? "Regulator: Annual Metrics (Excel)"
                             : "Operator: Monthly Summary (PDF)"}
                     </Label>
 
                     {isRegulator ? (
-                        <div className="h-10 rounded-md border bg-gray-50 flex items-center px-3 text-sm text-gray-500">
+                        <div className="h-10 rounded-md border bg-muted flex items-center px-3 text-sm text-muted-foreground">
                             Latest available year
                         </div>
                     ) : (
                         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full border-input focus:border-ring focus:ring-ring">
                                 <SelectValue placeholder="Choose a month..." />
                             </SelectTrigger>
                             <SelectContent>

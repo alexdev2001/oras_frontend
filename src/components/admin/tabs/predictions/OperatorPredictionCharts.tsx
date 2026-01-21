@@ -76,14 +76,14 @@ export function OperatorPredictionCharts({
                 return (
                     <Card
                         key={operator.operator}
-                        className="border-indigo-200 bg-gradient-to-br from-white to-indigo-50"
+                        className="border-indigo-200 dark:border-indigo-600 bg-gradient-to-br from-white to-indigo-50 dark:from-slate-800 dark:to-indigo-900/20"
                     >
                         <CardHeader>
                             <CardTitle>{operator.operator}</CardTitle>
-                            <p className="text-xs text-indigo-600 uppercase">
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 uppercase">
                                 Predicted values
                             </p>
-                            <p className="text-xs text-indigo-600 uppercase">
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 uppercase">
                                 Regulator: {selectedRegulator}
                             </p>
                         </CardHeader>
@@ -93,13 +93,14 @@ export function OperatorPredictionCharts({
                                 <LineChart data={operator.forecast.sort((a: any, b: any) => a.month.localeCompare(b.month))}>
                                     <XAxis
                                         dataKey="month"
-                                        tick={{ fontSize: 12 }}
+                                        tick={{ fontSize: 12, fill: 'currentColor' }}
                                     />
 
                                     <YAxis
                                         tickFormatter={formatMWKShort}
                                         width={90}
                                         domain={[minY - padding, maxY + padding]}
+                                        tick={{ fill: 'currentColor' }}
                                     />
 
                                     <Tooltip

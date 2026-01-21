@@ -11,6 +11,8 @@ import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, C
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Label } from '@/components/ui/label.tsx';
 import { jwtDecode } from 'jwt-decode';
+import type { DecodedToken } from '@/components/regulator/RegulatorDashboard.tsx';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface OperatorUser {
     user_metadata?: {
@@ -152,7 +154,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+        <div className="min-h-screen bg-background">
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 shadow-lg sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -164,6 +166,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                             </p>
                         </div>
                         <div className="flex items-center gap-2">
+                            <ThemeToggle />
                             <Button
                                 onClick={() => setShowSubmissionForm(true)}
                                 className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
@@ -193,8 +196,8 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                 variant={activeView === tab.id ? 'default' : 'ghost'}
                                 onClick={() => setActiveView(tab.id as any)}
                                 className={activeView === tab.id
-                                    ? 'bg-white text-indigo-600 hover:bg-white/90'
-                                    : 'text-white hover:bg-white/10'
+                                    ? 'bg-card text-primary hover:bg-card/90'
+                                    : 'text-foreground hover:bg-muted/50'
                                 }
                             >
                                 <tab.icon className="size-4 mr-2" />
@@ -208,14 +211,14 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Month Filter */}
                 {availableMonths.length > 0 && (
-                    <div className="mb-6 bg-white border rounded-lg p-4">
+                    <div className="mb-6 bg-card border rounded-lg p-4">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <Filter className="size-5 text-gray-600" />
+                                <Filter className="size-5 text-muted-foreground" />
                                 <Label htmlFor="month-filter" className="text-sm font-medium">Filter by Month:</Label>
                             </div>
                             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                <SelectTrigger id="month-filter" className="w-[280px]">
+                                <SelectTrigger id="month-filter" className="w-[280px] border-input focus:border-ring focus:ring-ring">
                                     <SelectValue placeholder="Select month" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -247,7 +250,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setSelectedMonth('all')}
-                                    className="text-gray-500 hover:text-gray-700"
+                                    className="text-muted-foreground hover:text-foreground"
                                 >
                                     Clear Filter
                                 </Button>
@@ -278,7 +281,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                         <CardHeader className="pb-2">
                                             <CardDescription className="flex items-center justify-between">
                                                 <span>{stat.title}</span>
-                                                <stat.icon className="size-4 text-gray-400" />
+                                                <stat.icon className="size-4 text-muted-foreground" />
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
@@ -315,7 +318,12 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                                 <YAxis />
                                                 <Tooltip
                                                     formatter={(value: number) => `$${value.toLocaleString()}`}
-                                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                                                    contentStyle={{ 
+                                                        borderRadius: '8px', 
+                                                        border: '1px solid var(--border)',
+                                                        backgroundColor: 'var(--card)',
+                                                        color: 'var(--card-foreground)'
+                                                    }}
                                                 />
                                                 <Area
                                                     type="monotone"
@@ -328,7 +336,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     ) : (
-                                        <div className="h-[250px] flex items-center justify-center text-gray-400">
+                                        <div className="h-[250px] flex items-center justify-center text-muted-foreground">
                                             No data available
                                         </div>
                                     )}
@@ -364,12 +372,17 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                                 </Pie>
                                                 <Tooltip
                                                     formatter={(value: number) => `$${value.toLocaleString()}`}
-                                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                                                    contentStyle={{ 
+                                                        borderRadius: '8px', 
+                                                        border: '1px solid var(--border)',
+                                                        backgroundColor: 'var(--card)',
+                                                        color: 'var(--card-foreground)'
+                                                    }}
                                                 />
                                             </RechartsPieChart>
                                         </ResponsiveContainer>
                                     ) : (
-                                        <div className="h-[250px] flex items-center justify-center text-gray-400">
+                                        <div className="h-[250px] flex items-center justify-center text-muted-foreground">
                                             No data available
                                         </div>
                                     )}
@@ -392,13 +405,13 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                             key={achievement.title}
                                             className={`p-4 rounded-lg border-2 ${
                                                 achievement.unlocked
-                                                    ? 'bg-yellow-50 border-yellow-300 shadow-sm'
-                                                    : 'bg-gray-50 border-gray-200 opacity-60'
+                                                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 shadow-sm'
+                                                    : 'bg-muted border-border opacity-60'
                                             }`}
                                         >
-                                            <achievement.icon className={`size-8 mb-2 ${achievement.unlocked ? 'text-yellow-600' : 'text-gray-400'}`} />
+                                            <achievement.icon className={`size-8 mb-2 ${achievement.unlocked ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground'}`} />
                                             <h4 className="font-medium mb-1">{achievement.title}</h4>
-                                            <p className="text-sm text-gray-600">{achievement.description}</p>
+                                            <p className="text-sm text-muted-foreground">{achievement.description}</p>
                                             {achievement.unlocked && (
                                                 <Progress value={100} className="mt-2 h-1" />
                                             )}
@@ -423,7 +436,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-sm text-gray-600 capitalize mb-1">{item.status}</p>
+                                                <p className="text-sm text-muted-foreground capitalize mb-1">{item.status}</p>
                                                 <p className="text-4xl">{item.count}</p>
                                             </div>
                                             <item.icon className="size-12 opacity-20" />
@@ -440,19 +453,19 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                             </CardHeader>
                             <CardContent>
                                 {isLoading ? (
-                                    <div className="text-center py-8 text-gray-500">Loading reports...</div>
+                                    <div className="text-center py-8 text-muted-foreground">Loading reports...</div>
                                 ) : reports.length === 0 ? (
                                     <div className="text-center py-12">
-                                        <FileText className="size-12 mx-auto text-gray-400 mb-4" />
-                                        <h3 className="text-lg font-medium text-gray-900">No reports yet</h3>
-                                        <p className="text-gray-500 mb-6">Submit your first monthly report to get started.</p>
+                                        <FileText className="size-12 mx-auto text-muted-foreground mb-4" />
+                                        <h3 className="text-lg font-medium text-foreground">No reports yet</h3>
+                                        <p className="text-muted-foreground mb-6">Submit your first monthly report to get started.</p>
                                         <Button onClick={() => setShowSubmissionForm(true)}>Submit First Report</Button>
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead>
-                                            <tr className="border-b bg-gray-50/50">
+                                            <tr className="border-b bg-muted/50">
                                                 <th className="px-4 py-4 text-sm font-semibold">Period</th>
                                                 <th className="px-4 py-4 text-sm font-semibold">Submitted</th>
                                                 <th className="px-4 py-4 text-sm font-semibold text-right">Revenue</th>
@@ -462,13 +475,13 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
                                             </thead>
                                             <tbody className="divide-y">
                                             {filteredReports.map((report) => (
-                                                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                                                <tr key={report.id} className="hover:bg-muted/50 transition-colors">
                                                     <td className="px-4 py-4">
                                                         <div className="font-medium">
                                                             {new Date(report.year, report.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-4 text-sm text-gray-500">
+                                                    <td className="px-4 py-4 text-sm text-muted-foreground">
                                                         {new Date(report.submittedAt).toLocaleDateString()}
                                                     </td>
                                                     <td className="px-4 py-4 text-sm text-right font-medium">
