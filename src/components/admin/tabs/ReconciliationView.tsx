@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge.tsx';
 import { reportsAPI } from '@/utils/API.ts';
 import type { OperatorReport, EMSComparison } from '@/types/report.ts';
 import { AlertCircle, CheckCircle, Search, FileText, XCircle } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog.tsx';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import {Textarea} from "@/components/ui/textarea.tsx";
 import type {Report} from "@/components/admin/tabs/ReportsTab.tsx";
@@ -26,6 +26,9 @@ export function ReconciliationView() {
     const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [isRejecting, setIsRejecting] = useState(false);
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertTitle, setAlertTitle] = useState("");
+    const [alertMessage, setAlertMessage] = useState("");
 
     const formatNumber = (value) => {
         if (!value) return "";
@@ -135,7 +138,9 @@ export function ReconciliationView() {
             }
         } catch (error) {
             console.error("Comparison error:", error);
-            alert("Failed to compare data.");
+            setAlertTitle("Comparison Failed");
+            setAlertMessage("Failed to compare data. Please try again.");
+            setShowAlert(true);
         } finally {
             setIsComparing(false);
         }
@@ -539,3 +544,5 @@ export function ReconciliationView() {
         </div>
     );
 }
+
+

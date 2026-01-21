@@ -103,8 +103,12 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
         ? approvedReports.reduce((sum, r) => sum + (r.overallGGRPercentage || 0), 0) / approvedReports.length
         : 0;
 
-    const allApprovedReports = reports.filter(r => r.status === 'approved');
-    const recentReports = allApprovedReports.slice(0, 6).reverse();
+    const allApprovedReports = reports.filter(r => r.status === 'approved').sort((a, b) => {
+        const dateA = new Date(a.year, a.month - 1).getTime();
+        const dateB = new Date(b.year, b.month - 1).getTime();
+        return dateA - dateB;
+    });
+    const recentReports = allApprovedReports.slice(-6);
     const trendData = recentReports.map(r => ({
         month: new Date(r.year, r.month - 1).toLocaleDateString('en-US', { month: 'short' }),
         ggr: r.totalGGR || 0,

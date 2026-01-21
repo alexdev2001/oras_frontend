@@ -83,6 +83,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
     const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
     const [regulatorAnalytics, setRegulatorAnalytics] = useState<RegulatorAnalytics[]>([]);
+    const [decodedRegulatorId, setDecodedRegulatorId] = useState<number | null>(null);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -97,10 +98,20 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                     role: decoded.roles?.[0],
                 },
             });
+
+            if (decoded.regulator_id) {
+                const loggedInRegulator = regulators.find(
+                    (reg) => reg.regulator_id === decoded.regulator_id
+                );
+                if (loggedInRegulator) {
+                    setSelectedRegulator(loggedInRegulator.regulator_name);
+                }
+                setDecodedRegulatorId(decoded.regulator_id);
+            }
         } catch (err) {
             console.error('Invalid token', err);
         }
-    }, []);
+    }, [regulators]);
 
     useEffect(() => {
         loadOperators();
@@ -115,6 +126,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         try {
             const regulatorsData = await managementAPI.getRegulators();
             setRegulators((regulatorsData || []).filter(r => r && r.regulator_id));
+            console.log('regulators loaded', regulatorsData);
         } catch (error) {
             console.error('Failed to load regulators:', error);
         }
@@ -241,8 +253,9 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                     )}
                     {value === 'predictions' && (
                         <RegulatorPredictionsTab
+                            regulators={regulators}
                             regulatorAnalytics={regulatorAnalytics}
-                            selectedRegulator={selectedRegulator}
+                            decodedRegulatorId={decodedRegulatorId}
                         />
                     )}
                 </p>

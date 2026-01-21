@@ -109,7 +109,7 @@ export function AnalyticsOverview({
                 ...analytics,
                 monthlyTrends: analytics.monthlyTrends.filter(
                     (m) => m.month === selectedMonth
-                ),
+                ).sort((a, b) => a.month.localeCompare(b.month)),
             };
 
     if (filteredAnalytics.monthlyTrends.length === 0) {

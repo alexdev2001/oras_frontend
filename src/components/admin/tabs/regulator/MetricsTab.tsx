@@ -277,8 +277,10 @@ export function MetricsTab({
                                         {Object.entries(operators).map(([operator, operatorMetrics]) => {
                                             const collapseKey = `${regulatorId}-${operator}`;
 
+                                            const sortedOperatorMetrics = [...operatorMetrics].sort((a, b) => a.month_year.localeCompare(b.month_year));
+
                                             const maxY = Math.max(
-                                                ...operatorMetrics.map(m =>
+                                                ...sortedOperatorMetrics.map(m =>
                                                     Math.max(
                                                         m.revenue_stake,
                                                         m.ggr_net_cash,
@@ -307,7 +309,7 @@ export function MetricsTab({
                                                     {!collapsed[collapseKey] && (
                                                         <CardContent className="space-y-4">
                                                             <ResponsiveContainer width="100%" height={200}>
-                                                                <LineChart data={operatorMetrics}>
+                                                                <LineChart data={sortedOperatorMetrics}>
                                                                     <CartesianGrid strokeDasharray="3 3" />
                                                                     <XAxis dataKey="month_year" />
                                                                     <YAxis tickFormatter={formatMWKShort} domain={[0, maxY * 1.1]} />
@@ -330,7 +332,7 @@ export function MetricsTab({
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {operatorMetrics.map((m, i) => (
+                                                                    {sortedOperatorMetrics.map((m, i) => (
                                                                         <TableRow key={i}>
                                                                             <TableCell>{m.month_year}</TableCell>
                                                                             <TableCell>{m.report_type}</TableCell>

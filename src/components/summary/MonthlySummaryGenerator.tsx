@@ -61,6 +61,9 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [regulators, setRegulators] = useState<Regulator[]>([]);
     const [selectedRegulator, setSelectedRegulator] = useState<string>("");
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertTitle, setAlertTitle] = useState("");
+    const [alertMessage, setAlertMessage] = useState("");
 
     useEffect(() => {
         if (dialogOpen) {
@@ -99,7 +102,9 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error(error);
-            alert("Failed to generate PDF");
+            setAlertTitle("PDF Generation Failed");
+            setAlertMessage("Failed to generate PDF. Please try again.");
+            setShowAlert(true);
         } finally {
             setLoading(false);
         }
@@ -136,7 +141,9 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
             setDialogOpen(false);
         } catch (error) {
             console.error(error);
-            alert("Failed to download Excel");
+            setAlertTitle("Excel Download Failed");
+            setAlertMessage("Failed to download Excel. Please try again.");
+            setShowAlert(true);
         } finally {
             setLoading(false);
         }
@@ -242,3 +249,4 @@ export function MonthlySummaryGenerator({ mode = "operator" }: Props) {
         </>
     );
 }
+

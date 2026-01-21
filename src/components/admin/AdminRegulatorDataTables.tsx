@@ -195,7 +195,7 @@ export function AdminRegulatorDataTables({
                     ? Array.from(new Set([
                         ...reg.per_operator.online.stake.flatMap(r => Object.keys(r)),
                         ...reg.per_operator.online.ggr.flatMap(r => Object.keys(r)),
-                    ])).filter(k => k !== 'operator' && k !== 'TOTAL').sort()
+                    ])).filter(k => k !== 'operator' && k !== 'TOTAL').sort((a, b) => a.localeCompare(b))
                     : [selectedMonth, 'TOTAL'];
 
                 return (
@@ -229,7 +229,7 @@ export function AdminRegulatorDataTables({
                                             {/* MONTHLY TABLES */}
                                             <TabsContent value="monthly" className="space-y-6">
                                                 {(["online", "offline", "combined"] as const).map((type) => {
-                                                    const rows = filteredMonthlyRows(reg.monthly[type]);
+                                                    const rows = filteredMonthlyRows(reg.monthly[type]).sort((a, b) => a.month.localeCompare(b.month));
 
                                                     const headerClass =
                                                         type === "online"

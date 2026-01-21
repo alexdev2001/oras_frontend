@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {authAPI, managementAPI, reportsAPI, analyticsAPI} from '@/utils/API.ts';
 import {
     Plus, LogOut, FileText, Upload, CheckCircle, Clock, XCircle, Building2, ShieldCheck, UserCheck, UserX, Users,
-    Download, ArrowUpDown, Filter, BarChart3, Database
+    Download, ArrowUpDown, Filter, BarChart3, Database, TrendingUp
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +16,11 @@ import { KpiCard } from './KpiCard';
 import { ReportInstructionsDialog } from './ReportInstructionDialog';
 import {jwtDecode} from 'jwt-decode';
 import {RegulatorDataTables} from "@/components/admin/tabs/regulator/RegulatorDataTables.tsx";
+import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/RegulatorPredictionsTab.tsx";
 import {ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar} from 'recharts';
 import * as XLSX from 'xlsx';
 import {FilePreview} from "@/components/regulator/FilePreview.tsx";
+import type {Regulator} from "@/types/regulator.ts";
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -119,6 +122,18 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [decoded, setDecoded] = useState<DecodedToken | null>(null);
     const [analytics, setAnalytics] = useState<RegulatorAnalytics | null>(null);
     const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertTitle, setAlertTitle] = useState("");
+    const [alertMessage, setAlertMessage] = useState("");
+    const [regulators, setRegulators] = useState<Regulator[]>([]);
+
+    const displayUser = decoded
+        ? {
+            email: decoded.email_notification,
+            country: decoded.country,
+            role: decoded.roles?.[0],
+        }
+        : null;
 
     // Form state
     const [file, setFile] = useState<File | null>(null);
@@ -128,7 +143,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     const [filterType, setFilterType] = useState<'all' | 'online' | 'offline'>('all');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-    const [activeView, setActiveView] = useState<'overview' | 'submissions' | 'analytics'>('overview');
+    const [activeView, setActiveView] = useState<'overview' | 'submissions' | 'analytics' | 'predictions'>('overview');
+
+    const currentRegulator = decoded?.regulator_id && displayUser?.email
+        ? [{ regulator_id: decoded.regulator_id, regulator_name: displayUser.email }]
+        : [];
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -149,6 +168,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         loadSubmissions();
         loadUniqueOperators(regulatorId);
         loadAnalytics(regulatorId);
+        loadRegulators();
     }, [regulatorId]);
 
     // const loadUser = async () => {
@@ -160,13 +180,14 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     //     }
     // };
 
-    const displayUser = decoded
-        ? {
-            email: decoded.email_notification,
-            country: decoded.country,
-            role: decoded.roles?.[0],
+    async function loadRegulators() {
+        try {
+            const regulators = await managementAPI.getRegulators();
+            setRegulators((regulators || []).filter(r => r && r.regulator_id));
+        } catch (e) {
+            console.error('cannot find regulator', e);
         }
-        : null;
+    }
 
     async function loadUniqueOperators(regulatorId: number) {
         try {
@@ -248,7 +269,9 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!month || !file) {
-            alert('Please select a reporting month and upload a file.');
+            setAlertTitle("Submission Error");
+            setAlertMessage("Please select a reporting month and upload a file.");
+            setShowAlert(true);
             return;
         }
 
@@ -257,7 +280,9 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         try {
             const response = await reportsAPI.submitMetrics(month, submissionType, file);
             if (response !== null) {
-                alert(`Report for ${month} (${submissionType}) submitted successfully!`);
+                setAlertTitle("Submission Successful");
+                setAlertMessage(`Report for ${month} (${submissionType}) submitted successfully!`);
+                setShowAlert(true);
                 setShowSubmissionForm(false);
                 resetForm();
                 if (regulatorId !== null) {
@@ -268,7 +293,9 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
             }
         } catch (error: any) {
             console.error('Failed to submit:', error);
-            alert(error.message || 'Failed to submit file. Check console for network errors.');
+            setAlertTitle("Submission Failed");
+            setAlertMessage(error.message || 'Failed to submit file. Check console for network errors.');
+            setShowAlert(true);
         } finally {
             setIsSubmitting(false);
         }
@@ -326,7 +353,8 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         }
     };
 
-    const combinedMonthly = analytics?.monthly?.combined ?? [];
+    const combinedMonthly = analytics?.monthly?.combined
+        ?.sort((a, b) => a.month.localeCompare(b.month)) ?? [];
     const totalStake = combinedMonthly.reduce((sum, row) => sum + (row.stake || 0), 0);
     const totalGgr = combinedMonthly.reduce((sum, row) => sum + (row.ggr || 0), 0);
     const avgGgrPct = combinedMonthly.length
@@ -567,6 +595,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             { id: 'overview', label: 'Overview', icon: BarChart3 },
                             { id: 'submissions', label: 'Submissions', icon: FileText },
                             { id: 'analytics', label: 'Data Analytics', icon: Database },
+                            { id: 'predictions', label: 'Predictions', icon: TrendingUp },
                         ].map((tab) => (
                             <Button
                                 key={tab.id}
@@ -1028,7 +1057,69 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                         <RegulatorDataTables regulatorId={regulatorId} />
                     </motion.div>
                 )}
+
+                {/* PREDICTIONS TAB */}
+                {activeView === 'predictions' && regulatorId !== null && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <RegulatorPredictionsTab
+                            regulators={regulators}
+                            regulatorAnalytics={analytics ? [analytics] : []}
+                            decodedRegulatorId={regulatorId}
+                        />
+                    </motion.div>
+                )}
             </div>
+
+            <Dialog open={showAlert} onOpenChange={setShowAlert}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{alertTitle}</DialogTitle>
+                        <DialogDescription>{alertMessage}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => setShowAlert(false)}>OK</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+
+interface KpiProps {
+    icon: React.ElementType;
+    label: string;
+    value: string;
+}
+
+function Kpi({
+                                           icon: Icon,
+                                           label,
+                                           value
+                                       }: KpiProps) {
+    return (
+        <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+                <Icon className="text-indigo-600 shrink-0"/>
+                <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <p className="font-semibold truncate max-w-[160px] whitespace-nowrap cursor-default">
+                                {value}
+                            </p>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="start" className="text-xs">
+                            {value}
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
