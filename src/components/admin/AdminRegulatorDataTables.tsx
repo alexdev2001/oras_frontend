@@ -16,9 +16,11 @@ import {
     ChevronDown,
     ChevronRight,
     ArrowUpDown,
+    Search,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
 
 interface MonthlyData {
     month: string;
@@ -76,6 +78,8 @@ export function AdminRegulatorDataTables({
     );
     const [activeTabs, setActiveTabs] = useState<Record<number, string>>({});
     const [sortOrders, setSortOrders] = useState<Record<number, SortOrder>>({});
+    const [operatorSearch, setOperatorSearch] = useState<Record<number, string>>({});
+    const [regulatorSearch, setRegulatorSearch] = useState<string>("");
 
     const monthNames: Record<string, string> = {
         "01": "January",
@@ -107,9 +111,22 @@ export function AdminRegulatorDataTables({
     };
 
     const filteredAnalytics = useMemo(() => {
-        if (selectedRegulator === "all") return analytics;
-        return analytics.filter((r) => r.regulator_name === selectedRegulator);
-    }, [analytics, selectedRegulator]);
+        let filtered = analytics;
+        
+        // Apply dashboard-level regulator filter
+        if (selectedRegulator !== "all") {
+            filtered = filtered.filter((r) => r.regulator_name === selectedRegulator);
+        }
+        
+        // Apply search filter
+        if (regulatorSearch.trim()) {
+            filtered = filtered.filter((r) => 
+                r.regulator_name.toLowerCase().includes(regulatorSearch.toLowerCase())
+            );
+        }
+        
+        return filtered;
+    }, [analytics, selectedRegulator, regulatorSearch]);
 
     const formatCurrency = (value: number) =>
         new Intl.NumberFormat("en-MW", { style: "currency", currency: "MWK", minimumFractionDigits: 0 }).format(value);
@@ -161,6 +178,13 @@ export function AdminRegulatorDataTables({
         });
     };
 
+    const filterOperators = (data: PerOperatorData[], searchTerm: string) => {
+        if (!searchTerm.trim()) return data;
+        return data.filter(row => 
+            row.operator.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    };
+
     const getMonthKeysForRegulator = (reg: RegulatorAnalytics, selectedMonth: string) => {
         const keys = Array.from(
             new Set([
@@ -190,7 +214,28 @@ export function AdminRegulatorDataTables({
 
     return (
         <div className="space-y-8">
-            {filteredAnalytics.map((reg, regIdx) => {
+            {/* Regulator Search */}
+            <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
+                <Input
+                    placeholder="Search by regulator..."
+                    value={regulatorSearch}
+                    onChange={(e) => setRegulatorSearch(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+
+            {filteredAnalytics.length === 0 ? (
+                <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                        {regulatorSearch.trim() 
+                            ? `No regulators found matching "${regulatorSearch}"`
+                            : "No regulator analytics data available."
+                        }
+                    </p>
+                </div>
+            ) : (
+                filteredAnalytics.map((reg, regIdx) => {
                 const allMonthKeys = selectedMonth === 'all'
                     ? Array.from(new Set([
                         ...reg.per_operator.online.stake.flatMap(r => Object.keys(r)),
@@ -314,11 +359,26 @@ export function AdminRegulatorDataTables({
                                                 );
                                                 const ggrData = tab === "online" ? reg.per_operator.online.ggr : reg.per_operator.offline.ggr;
                                                 const mergedData = mergeOperatorMetrics(stakeData, ggrData, allMonthKeys);
+                                                
+                                                // Apply operator search filtering
+                                                const searchTerm = operatorSearch[regIdx] || "";
+                                                const filteredStakeData = filterOperators(stakeData, searchTerm);
+                                                const filteredGgrData = filterOperators(ggrData, searchTerm);
+                                                const filteredMergedData = filterOperators(mergedData, searchTerm);
 
                                                 return (
                                                     <TabsContent key={tab} value={tab} className="space-y-6">
-                                                        {/* Sort button */}
-                                                        <div className="flex justify-end mb-2">
+                                                        {/* Search and Sort controls */}
+                                                        <div className="flex justify-between items-center gap-4 mb-2">
+                                                            <div className="relative max-w-sm">
+                                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
+                                                                <Input
+                                                                    placeholder="Search by operator..."
+                                                                    value={searchTerm}
+                                                                    onChange={(e) => setOperatorSearch(prev => ({ ...prev, [regIdx]: e.target.value }))}
+                                                                    className="pl-10"
+                                                                />
+                                                            </div>
                                                             <Button variant="outline" size="sm" onClick={() => toggleSortOrder(regIdx)} className="flex items-center gap-2">
                                                                 <ArrowUpDown className="size-4" />
                                                                 {(sortOrders[regIdx] ?? "desc") === "desc" ? "Highest → Lowest" : "Lowest → Highest"}
@@ -348,14 +408,20 @@ export function AdminRegulatorDataTables({
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {stakeData.length === 0 ? (
+                                                                        {filteredStakeData.length === 0 ? (
                                                                             <tr>
                                                                                 <td colSpan={allMonthKeys.length + 2} className="p-6">
-                                                                                    <NoDataState message="No stake data available for this regulator." />
+                                                                                    {searchTerm.trim() ? (
+                                                                                        <div className="text-center text-muted-foreground">
+                                                                                            <p>No operators found matching "{searchTerm}"</p>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <NoDataState message="No stake data available for this regulator." />
+                                                                                    )}
                                                                                 </td>
                                                                             </tr>
                                                                         ) : (
-                                                                            stakeData.map((row, idx) => (
+                                                                            filteredStakeData.map((row, idx) => (
                                                                                 <motion.tr key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="border-b hover:bg-muted/50">
                                                                                     <td className="p-3 font-medium">{row.operator}</td>
                                                                                     {allMonthKeys.map((m) => (
@@ -392,15 +458,29 @@ export function AdminRegulatorDataTables({
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {mergedData.map((row, idx) => (
-                                                                            <tr key={idx} className="border-b hover:bg-muted/50">
-                                                                                <td className="p-3 font-medium">{row.operator}</td>
-                                                                                {allMonthKeys.map((m) => (
-                                                                                    <td key={m} className="p-3 text-right font-mono">{formatCurrency(row[`${m}_payout`] as number)}</td>
-                                                                                ))}
-                                                                                <td className="p-3 text-right font-mono font-bold bg-amber-100/20 dark:bg-amber-900/30">{formatCurrency(row.TOTAL_PAYOUT as number)}</td>
+                                                                        {filteredMergedData.length === 0 ? (
+                                                                            <tr>
+                                                                                <td colSpan={allMonthKeys.length + 2} className="p-6">
+                                                                                    {searchTerm.trim() ? (
+                                                                                        <div className="text-center text-muted-foreground">
+                                                                                            <p>No operators found matching "{searchTerm}"</p>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <NoDataState message="No payout data available for this regulator." />
+                                                                                    )}
+                                                                                </td>
                                                                             </tr>
-                                                                        ))}
+                                                                        ) : (
+                                                                            filteredMergedData.map((row, idx) => (
+                                                                                <tr key={idx} className="border-b hover:bg-muted/50">
+                                                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                                                    {allMonthKeys.map((m) => (
+                                                                                        <td key={m} className="p-3 text-right font-mono">{formatCurrency(row[`${m}_payout`] as number)}</td>
+                                                                                    ))}
+                                                                                    <td className="p-3 text-right font-mono font-bold bg-amber-100/20 dark:bg-amber-900/30">{formatCurrency(row.TOTAL_PAYOUT as number)}</td>
+                                                                                </tr>
+                                                                            ))
+                                                                        )}
                                                                         </tbody>
                                                                     </table>
                                                                 </div>
@@ -428,15 +508,29 @@ export function AdminRegulatorDataTables({
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {ggrData.map((row, idx) => (
-                                                                            <tr key={idx} className="border-b hover:bg-muted/50">
-                                                                                <td className="p-3 font-medium">{row.operator}</td>
-                                                                                {allMonthKeys.map((m) => (
-                                                                                    <td key={m} className="p-3 text-right font-mono text-green-600 dark:text-green-400">{row[m] ? formatCurrency(row[m] as number) : ""}</td>
-                                                                                ))}
-                                                                                <td className="p-3 text-right font-mono font-bold text-green-600 dark:text-green-400 bg-green-100/20 dark:bg-green-900/30">{formatCurrency(row.TOTAL)}</td>
+                                                                        {filteredGgrData.length === 0 ? (
+                                                                            <tr>
+                                                                                <td colSpan={allMonthKeys.length + 2} className="p-6">
+                                                                                    {searchTerm.trim() ? (
+                                                                                        <div className="text-center text-muted-foreground">
+                                                                                            <p>No operators found matching "{searchTerm}"</p>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <NoDataState message="No GGR data available for this regulator." />
+                                                                                    )}
+                                                                                </td>
                                                                             </tr>
-                                                                        ))}
+                                                                        ) : (
+                                                                            filteredGgrData.map((row, idx) => (
+                                                                                <tr key={idx} className="border-b hover:bg-muted/50">
+                                                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                                                    {allMonthKeys.map((m) => (
+                                                                                        <td key={m} className="p-3 text-right font-mono text-green-600 dark:text-green-400">{row[m] ? formatCurrency(row[m] as number) : ""}</td>
+                                                                                    ))}
+                                                                                    <td className="p-3 text-right font-mono font-bold text-green-600 dark:text-green-400 bg-green-100/20 dark:bg-green-900/30">{formatCurrency(row.TOTAL)}</td>
+                                                                                </tr>
+                                                                            ))
+                                                                        )}
                                                                         </tbody>
                                                                     </table>
                                                                 </div>
@@ -464,15 +558,29 @@ export function AdminRegulatorDataTables({
                                                                         </tr>
                                                                         </thead>
                                                                         <tbody>
-                                                                        {mergedData.map((row, idx) => (
-                                                                            <tr key={idx} className="border-b hover:bg-muted/50">
-                                                                                <td className="p-3 font-medium">{row.operator}</td>
-                                                                                {allMonthKeys.map((m) => (
-                                                                                    <td key={m} className="p-3 text-right font-mono">{formatPercent(row[`${m}_ggr_pct`] as number)}</td>
-                                                                                ))}
-                                                                                <td className="p-3 text-right font-mono font-bold bg-purple-100/20 dark:bg-purple-900/30">{formatPercent(row.TOTAL_GGR_PCT as number)}</td>
+                                                                        {filteredMergedData.length === 0 ? (
+                                                                            <tr>
+                                                                                <td colSpan={allMonthKeys.length + 2} className="p-6">
+                                                                                    {searchTerm.trim() ? (
+                                                                                        <div className="text-center text-muted-foreground">
+                                                                                            <p>No operators found matching "{searchTerm}"</p>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <NoDataState message="No GGR percentage data available for this regulator." />
+                                                                                    )}
+                                                                                </td>
                                                                             </tr>
-                                                                        ))}
+                                                                        ) : (
+                                                                            filteredMergedData.map((row, idx) => (
+                                                                                <tr key={idx} className="border-b hover:bg-muted/50">
+                                                                                    <td className="p-3 font-medium">{row.operator}</td>
+                                                                                    {allMonthKeys.map((m) => (
+                                                                                        <td key={m} className="p-3 text-right font-mono">{formatPercent(row[`${m}_ggr_pct`] as number)}</td>
+                                                                                    ))}
+                                                                                    <td className="p-3 text-right font-mono font-bold bg-purple-100/20 dark:bg-purple-900/30">{formatPercent(row.TOTAL_GGR_PCT as number)}</td>
+                                                                                </tr>
+                                                                            ))
+                                                                        )}
                                                                         </tbody>
                                                                     </table>
                                                                 </div>
@@ -488,7 +596,8 @@ export function AdminRegulatorDataTables({
                         </AnimatePresence>
                     </Card>
                 );
-            })}
+            })
+            )}
         </div>
     );
 }

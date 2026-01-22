@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { analyticsAPI } from "@/utils/API";
 import {
     LineChart,
@@ -42,6 +44,16 @@ export function OperatorPredictionCharts({
                                              loading,
                                              setLoading,
                                          }: any) {
+    const [searchOperator, setSearchOperator] = useState("");
+
+    const filteredPredictions = useMemo(() => {
+        if (!searchOperator.trim()) return predictions;
+        
+        return predictions.filter((operator: any) =>
+            operator.operator.toLowerCase().includes(searchOperator.toLowerCase())
+        );
+    }, [predictions, searchOperator]);
+
     useEffect(() => {
         const loadPredictions = async () => {
             setLoading(true);
@@ -65,8 +77,30 @@ export function OperatorPredictionCharts({
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {predictions.map((operator: any) => {
+        <div className="space-y-6">
+            {/* Search by Operator */}
+            <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
+                <Input
+                    placeholder="Search by operator..."
+                    value={searchOperator}
+                    onChange={(e) => setSearchOperator(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredPredictions.length === 0 ? (
+                    <div className="col-span-full text-center py-12">
+                        <p className="text-muted-foreground">
+                            {searchOperator.trim() 
+                                ? `No operators found matching "${searchOperator}"`
+                                : "No predictions available"
+                            }
+                        </p>
+                    </div>
+                ) : (
+                    filteredPredictions.map((operator: any) => {
                 const values = operator.forecast.map((f: any) => f.ggr);
                 const minY = Math.min(...values);
                 const maxY = Math.max(...values);
@@ -90,7 +124,7 @@ export function OperatorPredictionCharts({
 
                         <CardContent className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={operator.forecast.sort((a: any, b: any) => a.month.localeCompare(b.month))}>
+                                <LineChart data={[...operator.forecast].sort((a: any, b: any) => a.month.localeCompare(b.month))}>
                                     <XAxis
                                         dataKey="month"
                                         tick={{ fontSize: 12, fill: 'currentColor' }}
@@ -108,6 +142,12 @@ export function OperatorPredictionCharts({
                                         labelFormatter={(label) =>
                                             `Month: ${label}`
                                         }
+                                        contentStyle={{
+                                            borderRadius: '8px',
+                                            border: '1px solid hsl(var(--border))',
+                                            backgroundColor: 'hsl(var(--background))',
+                                            color: 'hsl(var(--foreground))',
+                                        }}
                                     />
 
                                     <Line
@@ -123,7 +163,9 @@ export function OperatorPredictionCharts({
                         </CardContent>
                     </Card>
                 );
-            })}
+                    })
+                )}
+            </div>
         </div>
     );
 }

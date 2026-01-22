@@ -11,6 +11,7 @@ import {
     Download,
     ChevronDown,
     ChevronRight,
+    Search,
 } from 'lucide-react';
 import {
     Card,
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -51,6 +53,7 @@ export function AdminRegulatorSubmissions({
         useState<'newest' | 'oldest'>('newest');
     const [openRegulators, setOpenRegulators] =
         useState<Record<string, boolean>>({});
+    const [regulatorSearch, setRegulatorSearch] = useState<string>("");
 
     // Convert selectedRegulator name to its ID
     const selectedRegulatorId = useMemo(() => {
@@ -66,9 +69,14 @@ export function AdminRegulatorSubmissions({
                 !selectedRegulatorId || s.regulatorId === selectedRegulatorId;
             const matchesMonth =
                 selectedMonth === "all" || s.title.includes(selectedMonth);
-            return matchesRegulator && matchesMonth;
+            
+            // Apply regulator search filter
+            const matchesSearch = !regulatorSearch.trim() || 
+                s.regulatorName.toLowerCase().includes(regulatorSearch.toLowerCase());
+            
+            return matchesRegulator && matchesMonth && matchesSearch;
         });
-    }, [submissions, selectedRegulatorId, selectedMonth]);
+    }, [submissions, selectedRegulatorId, selectedMonth, regulatorSearch]);
 
     /* -------------------- STATS -------------------- */
     const totalOnline = filteredSubmissions.filter(s => s.status === 'online').length;
@@ -141,6 +149,17 @@ export function AdminRegulatorSubmissions({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
+            {/* ---------- Regulator Search ---------- */}
+            <div className="relative max-w-md mb-6">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
+                <Input
+                    placeholder="Search by regulator..."
+                    value={regulatorSearch}
+                    onChange={(e) => setRegulatorSearch(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+
             {/* ---------- STATS ---------- */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {[
@@ -229,7 +248,17 @@ export function AdminRegulatorSubmissions({
                 </CardHeader>
 
                 <CardContent>
-                    {Object.entries(grouped).map(([regulator, list]) => {
+                    {Object.keys(grouped).length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-muted-foreground">
+                                {regulatorSearch.trim() 
+                                    ? `No regulators found matching "${regulatorSearch}"`
+                                    : "No regulator submissions available."
+                                }
+                            </p>
+                        </div>
+                    ) : (
+                        Object.entries(grouped).map(([regulator, list]) => {
                         const processed = processSubmissions(list);
                         if (processed.length === 0) return null;
 
@@ -309,7 +338,8 @@ export function AdminRegulatorSubmissions({
                                 )}
                             </div>
                         );
-                    })}
+                    })
+                        )}
                 </CardContent>
             </Card>
         </motion.div>

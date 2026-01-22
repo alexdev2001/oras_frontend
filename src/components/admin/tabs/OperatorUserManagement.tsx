@@ -43,6 +43,10 @@ export function OperatorUserManagement() {
     const [regulators, setRegulators] = useState<Regulator[]>([]);
     const [showRegulatorDialog, setShowRegulatorDialog] = useState(false);
     const [editingRegulator, setEditingRegulator] = useState<Regulator | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [operatorDeleteDialogOpen, setOperatorDeleteDialogOpen] = useState(false);
+    const [operatorToDelete, setOperatorToDelete] = useState<Operator | null>(null);
 
     // Operator form state
     const [operatorForm, setOperatorForm] = useState({
@@ -315,13 +319,21 @@ export function OperatorUserManagement() {
     };
 
     const handleDeleteOperator = async (operatorId: number) => {
-        if (!confirm('Are you sure you want to delete this operator? This action cannot be undone.')) {
-            return;
+        const operator = operators.find(op => op.operator_id === operatorId);
+        if (operator) {
+            setOperatorToDelete(operator);
+            setOperatorDeleteDialogOpen(true);
         }
+    };
+
+    const confirmDeleteOperator = async () => {
+        if (!operatorToDelete) return;
 
         try {
-            await managementAPI.deleteOperator(operatorId);
+            await managementAPI.deleteOperator(operatorToDelete.operator_id);
             setSuccess('Operator deleted successfully!');
+            setOperatorDeleteDialogOpen(false);
+            setOperatorToDelete(null);
             loadData();
             setTimeout(() => setSuccess(''), 3000);
         } catch (err: any) {
@@ -329,19 +341,37 @@ export function OperatorUserManagement() {
         }
     };
 
+    const cancelDeleteOperator = () => {
+        setOperatorDeleteDialogOpen(false);
+        setOperatorToDelete(null);
+    };
+
     const handleDeleteUser = async (userId: number) => {
-        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-            return;
+        const user = users.find(u => u.user_id === userId);
+        if (user) {
+            setUserToDelete(user);
+            setDeleteDialogOpen(true);
         }
+    };
+
+    const confirmDeleteUser = async () => {
+        if (!userToDelete) return;
 
         try {
-            await managementAPI.deleteUser(userId);
+            await managementAPI.deleteUser(userToDelete.user_id);
             setSuccess('User deleted successfully!');
+            setDeleteDialogOpen(false);
+            setUserToDelete(null);
             loadData();
             setTimeout(() => setSuccess(''), 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to delete operator');
+            setError(err.message || 'Failed to delete user');
         }
+    };
+
+    const cancelDeleteUser = () => {
+        setDeleteDialogOpen(false);
+        setUserToDelete(null);
     };
 
     const handleUpdateUser = async (e: React.FormEvent) => {
@@ -486,7 +516,7 @@ export function OperatorUserManagement() {
                             {regulators.map((regulator) => (
                                 <div
                                     key={regulator.regulator_id}
-                                    className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                                    className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -564,7 +594,7 @@ export function OperatorUserManagement() {
                                 </tr>
                             ) : (
                                 operators.map((operator) => (
-                                    <tr key={operator.operator_id} className="border-b hover:bg-gray-50">
+                                    <tr key={operator.operator_id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700">
                                         <td className="py-3 px-4 font-medium">#{operator.operator_id}</td>
                                         <td className="py-3 px-4">
                                             <div className="flex items-center gap-2">
@@ -632,14 +662,13 @@ export function OperatorUserManagement() {
                                 <th className="text-left py-3 px-4">Operator / Regulator</th>
                                 <th className="text-left py-3 px-4">Role</th>
                                 <th className="text-left py-3 px-4">Status</th>
-                                <th className="text-left py-3 px-4">Created</th>
                                 <th className="text-left py-3 px-4">Actions</th>
                             </tr>
                             </thead>
                             <tbody>
                             {users.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-8 text-gray-500">
+                                    <td colSpan={6} className="text-center py-8 text-gray-500">
                                         No users found. Add your first user to get started.
                                     </td>
                                 </tr>
@@ -660,7 +689,7 @@ export function OperatorUserManagement() {
                                     const DisplayIcon = isRegulator ? Globe : Building2;
 
                                     return (
-                                        <tr key={user.user_id} className="border-b hover:bg-gray-50">
+                                        <tr key={user.user_id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700">
                                             <td className="py-3 px-4 font-medium">#{user.user_id}</td>
                                             <td className="py-3 px-4">
                                                 <div>
@@ -697,12 +726,6 @@ export function OperatorUserManagement() {
                                                         Inactive
                                                     </Badge>
                                                 )}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center gap-1 text-sm text-gray-600">
-                                                    <Calendar className="size-3" />
-                                                    {new Date(user.created_at).toLocaleDateString()}
-                                                </div>
                                             </td>
                                             <td className="py-3 px-4">
                                                 <div className="flex gap-2">
@@ -1026,6 +1049,98 @@ export function OperatorUserManagement() {
                             </Button>
                         </div>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete User Confirmation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="size-5" />
+                            Delete User
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this user? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {userToDelete && (
+                        <div className="py-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-red-100 rounded-full flex items-center justify-center">
+                                        <UserPlus className="size-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{userToDelete.full_name || 'N/A'}</p>
+                                        <p className="text-sm text-gray-600">{userToDelete.email}</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            ID: #{userToDelete.user_id} • Role: {typeof userToDelete.roles?.[0] === 'string' ? userToDelete.roles[0] : userToDelete.roles?.[0]?.name || 'operator'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button variant="outline" onClick={cancelDeleteUser}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={confirmDeleteUser}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            <Trash2 className="size-4 mr-2" />
+                            Delete User
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Operator Confirmation Dialog */}
+            <Dialog open={operatorDeleteDialogOpen} onOpenChange={setOperatorDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="size-5" />
+                            Delete Operator
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this operator? This action cannot be undone and will also remove all associated users.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {operatorToDelete && (
+                        <div className="py-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-red-100 rounded-full flex items-center justify-center">
+                                        <Building2 className="size-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{operatorToDelete.operator_name}</p>
+                                        <p className="text-sm text-gray-600">License: {operatorToDelete.license_number}</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            ID: #{operatorToDelete.operator_id} • {users.filter(u => u.operator_id === operatorToDelete.operator_id).length} associated users
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button variant="outline" onClick={cancelDeleteOperator}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={confirmDeleteOperator}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            <Trash2 className="size-4 mr-2" />
+                            Delete Operator
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

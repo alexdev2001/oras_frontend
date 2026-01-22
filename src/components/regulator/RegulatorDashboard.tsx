@@ -20,8 +20,10 @@ import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/Regul
 import {ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar} from 'recharts';
 import * as XLSX from 'xlsx';
 import {FilePreview} from "@/components/regulator/FilePreview.tsx";
+import {MaglaSubmissionForm} from "@/components/regulator/MaglaSubmissionForm.tsx";
 import type {Regulator} from "@/types/regulator.ts";
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { MonthPicker } from '@/components/ui/month-picker';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -128,6 +130,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [alertTitle, setAlertTitle] = useState("");
     const [alertMessage, setAlertMessage] = useState("");
     const [regulators, setRegulators] = useState<Regulator[]>([]);
+    const [showMaglaSubmissionForm, setShowMaglaSubmissionForm] = useState(false);
+
+    // Determine regulator type based on email or regulator ID
+    const isMaglaRegulator = decoded?.email_notification?.toLowerCase().includes('magla') || 
+                            regulators.find(r => r.regulator_id === regulatorId)?.regulator_name.toLowerCase().includes('magla');
 
     const displayUser = decoded
         ? {
@@ -452,16 +459,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                     </div>
                                 )}
                                 {/* Month */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="month">Reporting Month *</Label>
-                                    <Input
-                                        id="month"
-                                        type="month"
-                                        value={month}
-                                        onChange={(e) => setMonth(e.target.value)}
-                                        required
-                                    />
-                                </div>
+                                <MonthPicker
+                                    value={month}
+                                    onChange={setMonth}
+                                    label="Reporting Month"
+                                    required
+                                    className="relative"
+                                />
 
                                 {/* Online / Offline */}
                                 <div className="space-y-2">
@@ -564,6 +568,19 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 }}
             />
 
+            {/* Magla Regulator Submission Form */}
+            <MaglaSubmissionForm
+                open={showMaglaSubmissionForm}
+                onOpenChange={setShowMaglaSubmissionForm}
+                onSubmitSuccess={() => {
+                    if (regulatorId !== null) {
+                        loadSubmissions();
+                        loadUniqueOperators(regulatorId);
+                        loadAnalytics(regulatorId);
+                    }
+                }}
+            />
+
             {/* Header */}
             <motion.div
                 initial={{ y: -20, opacity: 0 }}
@@ -586,8 +603,12 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             <ThemeToggle />
                             <Button
                                 onClick={() => {
-                                    setShowInstructions(true);
-                                    setShowSubmissionForm(false);
+                                    if (isMaglaRegulator) {
+                                        setShowMaglaSubmissionForm(true);
+                                    } else {
+                                        setShowInstructions(true);
+                                        setShowSubmissionForm(false);
+                                    }
                                 }}
                                 className="bg-card/10 border-border text-foreground hover:bg-card/20 backdrop-blur-sm"
                             >
@@ -710,7 +731,9 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                     formatter={(value: number) => `MWK ${value.toLocaleString('en-US')}`}
                                                     contentStyle={{
                                                         borderRadius: '8px',
-                                                        border: '1px solid #e5e7eb',
+                                                        border: '1px solid hsl(var(--border))',
+                                                        backgroundColor: 'hsl(var(--background))',
+                                                        color: 'hsl(var(--foreground))',
                                                     }}
                                                 />
                                                 <Area
@@ -735,7 +758,6 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                                 y={y - 10}
                                                                 fill="#22c55e"
                                                                 fontSize={12}
-                                                                fontWeight="500"
                                                                 textAnchor="middle"
                                                             >
                                                                 {formatNumberShort(value)}
@@ -786,12 +808,17 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                                     width={60}
                                                 />
                                                 <Tooltip
-                                                    formatter={(value: number) =>
-                                                        `MWK ${value.toLocaleString('en-US')}`
-                                                    }
+                                                    formatter={(value: number) => [
+                                                        <span style={{ color: '#1f2937', fontWeight: 'bold' }}>
+                                                            MWK {value.toLocaleString('en-US')}
+                                                        </span>,
+                                                        'GGR'
+                                                    ]}
                                                     contentStyle={{
                                                         borderRadius: '8px',
-                                                        border: '1px solid #e5e7eb',
+                                                        border: '1px solid hsl(var(--border))',
+                                                        backgroundColor: 'hsl(var(--background))',
+                                                        color: 'hsl(var(--foreground))',
                                                     }}
                                                 />
                                                 <Bar dataKey="ggrTotal" fill="#4f46e5" radius={[4, 4, 0, 0]} />

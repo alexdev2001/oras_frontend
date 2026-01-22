@@ -11,7 +11,11 @@ export const ThemeToggle: React.FC = () => {
       variant="outline"
       size="sm"
       onClick={toggleTheme}
-      className="w-9 h-9 p-0 border-2 hover:bg-accent/50 transition-all duration-200"
+      className={`w-9 h-9 p-0 border-2 hover:bg-accent/50 transition-all duration-200 ${
+        theme === 'light' 
+          ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm' 
+          : ''
+      }`}
       aria-label="Toggle theme"
     >
       {theme === 'light' ? (

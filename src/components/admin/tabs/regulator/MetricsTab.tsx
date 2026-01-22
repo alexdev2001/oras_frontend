@@ -80,12 +80,12 @@ function NoMetricsState({ message }: { message?: string }) {
         <div className="
             flex flex-col items-center justify-center
             py-12 text-center
-            text-gray-500
-            border border-dashed
+            text-gray-500 dark:text-gray-400
+            border border-dashed border-gray-300 dark:border-gray-600
             rounded-lg
-            bg-gray-50
+            bg-gray-50 dark:bg-gray-800/50
         ">
-            <TrendingUp className="size-8 mb-3 text-gray-400" />
+            <TrendingUp className="size-8 mb-3 text-gray-400 dark:text-gray-500" />
             <p className="text-sm font-medium">
                 {message ?? "No regulator metrics available."}
             </p>
