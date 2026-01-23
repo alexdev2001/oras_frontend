@@ -1,8 +1,28 @@
 import {useEffect, useState} from "react";
 import {reportsAPI} from "@/utils/API.ts";
-import * as XLSX from "xlsx";
+import * as ExcelJS from "exceljs";
 import {FileText} from "lucide-react";
-import {Button} from "@/components/ui/button.tsx";
+
+// Function to format currency values with comma separators
+const formatCurrencyValue = (value: any): string => {
+    if (value === null || value === undefined || value === '') return '';
+    
+    // Convert to string and check if it's a number
+    const stringValue = String(value).trim();
+    
+    // Remove any existing formatting and check if it's a valid number
+    const cleanValue = stringValue.replace(/[,\sMWK]/g, '');
+    const numericValue = parseFloat(cleanValue);
+    
+    // If it's not a valid number, return as-is
+    if (isNaN(numericValue)) return stringValue;
+    
+    // Format with comma separators
+    return new Intl.NumberFormat('en-MW', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    }).format(numericValue);
+};
 
 export function FilePreview({
                                 reportId,
@@ -27,17 +47,25 @@ export function FilePreview({
                 const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
 
                 const buffer = await blob.arrayBuffer();
-                const workbook = XLSX.read(buffer, { type: 'array' });
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(buffer);
 
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
+                const worksheet = workbook.getWorksheet(1);
+                if (!worksheet) {
+                    setRows(null);
+                    return;
+                }
 
-                const data = XLSX.utils.sheet_to_json(sheet, {
-                    header: 1,
-                    blankrows: false,
-                }) as any[][];
+                const data: any[][] = [];
+                worksheet.eachRow((row, rowNumber) => {
+                    if (rowNumber <= 30) { // Limit to first 30 rows
+                        const values = row.values as any[];
+                        // ExcelJS includes an empty element at index 0, so we filter it out
+                        data.push(values.filter((_, index) => index > 0));
+                    }
+                });
 
-                setRows(data.slice(0, 30));
+                setRows(data);
             } catch (err) {
                 console.error('Failed to parse Excel:', err);
                 setRows(null);
@@ -83,7 +111,10 @@ export function FilePreview({
                                         key={j}
                                         className="px-3 py-2 border-r last:border-r-0 whitespace-nowrap text-gray-700 dark:text-gray-200"
                                     >
-                                        {cell ?? ''}
+                                        {cell === null || cell === undefined ? '' : 
+                                         typeof cell === 'object' && cell !== null ? 
+                                         (cell.result !== undefined ? formatCurrencyValue(cell.result) : JSON.stringify(cell)) : 
+                                         formatCurrencyValue(cell)}
                                     </td>
                                 ))}
                             </tr>

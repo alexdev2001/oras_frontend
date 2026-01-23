@@ -17,13 +17,14 @@ import { ReportInstructionsDialog } from './ReportInstructionDialog';
 import {jwtDecode} from 'jwt-decode';
 import {RegulatorDataTables} from "@/components/admin/tabs/regulator/RegulatorDataTables.tsx";
 import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/RegulatorPredictionsTab.tsx";
-import {ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar} from 'recharts';
-import * as XLSX from 'xlsx';
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar} from 'recharts';
 import {FilePreview} from "@/components/regulator/FilePreview.tsx";
-import {MaglaSubmissionForm} from "@/components/regulator/MaglaSubmissionForm.tsx";
+import {MaglaSubmissionPage} from "@/components/regulator/MaglaSubmissionPage.tsx";
+import {MaglaInstructionsDialog} from "@/components/regulator/MaglaInstructionsDialog.tsx";
 import type {Regulator} from "@/types/regulator.ts";
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { MonthPicker } from '@/components/ui/month-picker';
+import { tokenManager } from '@/utils/security.ts';
 
 interface RegulatorDashboardProps {
     onSignOut: () => void;
@@ -131,6 +132,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const [alertMessage, setAlertMessage] = useState("");
     const [regulators, setRegulators] = useState<Regulator[]>([]);
     const [showMaglaSubmissionForm, setShowMaglaSubmissionForm] = useState(false);
+    const [showMaglaInstructions, setShowMaglaInstructions] = useState(false);
 
     // Determine regulator type based on email or regulator ID
     const isMaglaRegulator = decoded?.email_notification?.toLowerCase().includes('magla') || 
@@ -159,7 +161,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         : [];
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken');
+        const token = tokenManager.getToken();
         if (!token) return;
 
         try {
@@ -556,28 +558,41 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         );
     }
 
-    return (
-        <div className="min-h-screen bg-background">
-            <ReportInstructionsDialog
-                open={showInstructions}
-                onOpenChange={(open) => {
-                    setShowInstructions(open);
-                    if (!open) {
-                        setShowSubmissionForm(true);
-                    }
-                }}
-            />
-
-            {/* Magla Regulator Submission Form */}
-            <MaglaSubmissionForm
-                open={showMaglaSubmissionForm}
-                onOpenChange={setShowMaglaSubmissionForm}
+    if (showMaglaSubmissionForm) {
+        return (
+            <MaglaSubmissionPage
+                onCancel={() => setShowMaglaSubmissionForm(false)}
                 onSubmitSuccess={() => {
                     if (regulatorId !== null) {
                         loadSubmissions();
                         loadUniqueOperators(regulatorId);
                         loadAnalytics(regulatorId);
                     }
+                }}
+            />
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-background">
+            <ReportInstructionsDialog
+                open={showInstructions}
+                onOpenChange={(open) => {
+                    setShowInstructions(open);
+                }}
+                onGetStarted={() => {
+                    setShowSubmissionForm(true);
+                }}
+            />
+
+            {/* Magla Instructions Dialog */}
+            <MaglaInstructionsDialog
+                open={showMaglaInstructions}
+                onOpenChange={(open) => {
+                    setShowMaglaInstructions(open);
+                }}
+                onGetStarted={() => {
+                    setShowMaglaSubmissionForm(true);
                 }}
             />
 
@@ -604,7 +619,8 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             <Button
                                 onClick={() => {
                                     if (isMaglaRegulator) {
-                                        setShowMaglaSubmissionForm(true);
+                                        setShowMaglaInstructions(true);
+                                        setShowMaglaSubmissionForm(false);
                                     } else {
                                         setShowInstructions(true);
                                         setShowSubmissionForm(false);
@@ -1005,7 +1021,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                     >
                                         <FileText className="size-12 mx-auto text-gray-400 mb-4" />
                                         <p className="text-gray-600 mb-4">No documents submitted yet</p>
-                                        <Button onClick={() => setShowInstructions(true)}>
+                                        <Button onClick={() => {
+                                            if (isMaglaRegulator) {
+                                                setShowMaglaInstructions(true);
+                                            } else {
+                                                setShowInstructions(true);
+                                            }
+                                        }}>
                                             <Plus className="size-4 mr-2" />
                                             Submit Your First Document
                                         </Button>

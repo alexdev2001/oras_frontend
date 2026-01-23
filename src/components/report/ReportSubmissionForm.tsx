@@ -8,6 +8,7 @@ import { ReportInstructionsDialog } from './ReportInstructionsDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert.tsx';
 import type {DecodedToken} from "@/types/token.ts";
 import {jwtDecode} from "jwt-decode";
+import { tokenManager } from '@/utils/security.ts';
 
 interface ReportSubmissionFormProps {
     onCancel: () => void;
@@ -25,7 +26,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
 
 
     useEffect(() => {
-        const token = localStorage.getItem("authToken");
+        const token = tokenManager.getToken();
         if (token) {
             try {
                 const decoded = jwtDecode<DecodedToken>(token);
@@ -125,11 +126,11 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
     const getStatusMessage = () => {
         switch (uploadStatus) {
             case 'validating':
-                return { text: 'Validating file structure...', color: 'blue' };
+                return { text: 'Validating IGJ report file structure...', color: 'blue' };
             case 'processing':
-                return { text: 'Processing data and calculating metrics...', color: 'blue' };
+                return { text: 'Processing IGJ regulatory data and metrics...', color: 'blue' };
             case 'success':
-                return { text: 'Report submitted successfully!', color: 'green' };
+                return { text: 'IGJ report submitted successfully!', color: 'green' };
             case 'error':
                 return { text: 'Upload failed. Please check the file and try again.', color: 'red' };
             default:
@@ -157,9 +158,9 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                         <CardHeader>
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <CardTitle>Submit Monthly Report</CardTitle>
+                                    <CardTitle>Submit IGJ Monthly Report</CardTitle>
                                     <CardDescription>
-                                        Upload your unified operator report Excel file
+                                        Upload your IGJ regulatory report Excel file for compliance
                                     </CardDescription>
                                 </div>
                                 <Button
@@ -177,7 +178,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
 
                                 {/* File Upload Area */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="excel-file">Excel Report File</Label>
+                                    <Label htmlFor="excel-file">IGJ Report Excel File</Label>
                                     <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-ring transition-colors">
                                         <input
                                             id="excel-file"
@@ -213,7 +214,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                                                 <div className="space-y-3">
                                                     <Upload className="size-12 mx-auto text-muted-foreground" />
                                                     <div>
-                                                        <p className="font-medium">Click to upload Excel file</p>
+                                                        <p className="font-medium">Click to upload IGJ report file</p>
                                                         <p className="text-sm text-muted-foreground">or drag and drop</p>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
@@ -264,12 +265,12 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                                     <div className="flex items-start gap-3">
                                         <Info className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div className="text-sm text-blue-800">
-                                            <p className="font-medium mb-1">What happens next?</p>
+                                            <p className="font-medium mb-1">IGJ Report Processing</p>
                                             <ul className="space-y-1 text-blue-700">
-                                                <li>• Your file will be validated for structure and completeness</li>
-                                                <li>• Data will be automatically processed and metrics calculated</li>
-                                                <li>• Report will be submitted for admin review and approval</li>
-                                                <li>• You'll be notified once the report is reviewed</li>
+                                                <li>• Your IGJ report will be validated for structure and completeness</li>
+                                                <li>• IGJ regulatory data will be automatically processed and metrics calculated</li>
+                                                <li>• Report will be submitted to IGJ authority for admin review and approval</li>
+                                                <li>• You'll be notified once IGJ report is reviewed</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -291,7 +292,7 @@ export function ReportSubmissionForm({ onCancel, onSubmitSuccess }: ReportSubmis
                                         ) : (
                                             <>
                                                 <Upload className="size-4 mr-2" />
-                                                Submit Report
+                                                Submit IGJ Report
                                             </>
                                         )}
                                     </Button>

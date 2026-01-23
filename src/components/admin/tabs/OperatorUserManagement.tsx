@@ -5,7 +5,7 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Badge } from '../../ui/badge';
-import { Globe, Building2, UserPlus, Plus, Mail, Shield, Calendar, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react';
+import { Globe, Building2, UserPlus, Plus, Mail, Shield, Calendar, CheckCircle, XCircle, Edit, Trash2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { managementAPI } from "@/utils/API.ts";
@@ -47,6 +47,8 @@ export function OperatorUserManagement() {
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [operatorDeleteDialogOpen, setOperatorDeleteDialogOpen] = useState(false);
     const [operatorToDelete, setOperatorToDelete] = useState<Operator | null>(null);
+    const [regulatorDeleteDialogOpen, setRegulatorDeleteDialogOpen] = useState(false);
+    const [regulatorToDelete, setRegulatorToDelete] = useState<Regulator | null>(null);
 
     // Operator form state
     const [operatorForm, setOperatorForm] = useState({
@@ -64,10 +66,42 @@ export function OperatorUserManagement() {
         email: '',
         full_name: '',
         password: '',
+        confirm_password: '',
         operator_id: null as number | null,
         regulator_id: null as number | null,
         roles: ['operator'],
     });
+
+    // Password visibility states
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // Password validation
+    const getPasswordValidation = (password: string) => {
+        if (!password) return { isValid: false, message: '' };
+        
+        // Simple validation - just check if password is not empty
+        const isValid = password.length > 0;
+        
+        if (!isValid) {
+            return {
+                isValid: false,
+                message: 'Password is required'
+            };
+        }
+        
+        return { isValid: true, message: 'Password set' };
+    };
+
+    const getConfirmPasswordValidation = (password: string, confirmPassword: string) => {
+        if (!confirmPassword) return { isValid: false, message: '' };
+        
+        if (password !== confirmPassword) {
+            return { isValid: false, message: 'Passwords do not match' };
+        }
+        
+        return { isValid: true, message: 'Passwords match' };
+    };
 
     const handleRegulatorChange = (value: string) => {
         if (value === 'none') {
@@ -165,6 +199,7 @@ export function OperatorUserManagement() {
             email: user.email,
             full_name: user.full_name,
             password: '',
+            confirm_password: '',
             operator_id: user.operator_id ?? null,
             regulator_id: user.regulator_id ?? null,
             roles: deriveRoles(user.operator_id, user.regulator_id),
@@ -180,8 +215,9 @@ export function OperatorUserManagement() {
             email: '',
             full_name: '',
             password: '',
-            operator_id: '',
-            regulator_id: '',
+            confirm_password: '',
+            operator_id: null,
+            regulator_id: null,
             roles: ['operator']
         });
     };
@@ -205,13 +241,25 @@ export function OperatorUserManagement() {
         setError('');
         setSuccess('');
 
+        // Validate passwords match
+        if (userForm.password !== userForm.confirm_password) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        // Validate password is not empty
+        if (!userForm.password) {
+            setError('Password is required');
+            return;
+        }
+
         try {
             const userData = {
                 email: userForm.email,
                 full_name: userForm.full_name,
                 password: userForm.password,
-                operator_id: userForm.operator_id ? parseInt(userForm.operator_id) : null,
-                regulator_id: userForm.regulator_id ? parseInt(userForm.regulator_id) : null,
+                operator_id: userForm.operator_id ? parseInt(userForm.operator_id.toString()) : null,
+                regulator_id: userForm.regulator_id ? parseInt(userForm.regulator_id.toString()) : null,
                 roles: userForm.roles
             };
 
@@ -222,8 +270,9 @@ export function OperatorUserManagement() {
                 email: '',
                 full_name: '',
                 password: '',
-                operator_id: '',
-                regulator_id: '',
+                confirm_password: '',
+                operator_id: null,
+                regulator_id: null,
                 roles: ['operator']
             });
 
@@ -346,6 +395,34 @@ export function OperatorUserManagement() {
         setOperatorToDelete(null);
     };
 
+    const handleDeleteRegulator = async (regulatorId: number) => {
+        const regulator = regulators.find(r => r.regulator_id === regulatorId);
+        if (regulator) {
+            setRegulatorToDelete(regulator);
+            setRegulatorDeleteDialogOpen(true);
+        }
+    };
+
+    const confirmDeleteRegulator = async () => {
+        if (!regulatorToDelete) return;
+
+        try {
+            await managementAPI.deleteRegulator(regulatorToDelete.regulator_id);
+            setSuccess('Regulator deleted successfully!');
+            setRegulatorDeleteDialogOpen(false);
+            setRegulatorToDelete(null);
+            loadData();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete regulator');
+        }
+    };
+
+    const cancelDeleteRegulator = () => {
+        setRegulatorDeleteDialogOpen(false);
+        setRegulatorToDelete(null);
+    };
+
     const handleDeleteUser = async (userId: number) => {
         const user = users.find(u => u.user_id === userId);
         if (user) {
@@ -381,12 +458,18 @@ export function OperatorUserManagement() {
         setError('');
         setSuccess('');
 
+        // Validate passwords match if password is provided
+        if (userForm.password && userForm.password !== userForm.confirm_password) {
+            setError('Passwords do not match');
+            return;
+        }
+
         try {
             const userData = {
                 ...userForm,
                 operator_id:
                     userForm.operator_id && userForm.operator_id !== 'none'
-                        ? parseInt(userForm.operator_id)
+                        ? parseInt(userForm.operator_id.toString())
                         : null
             };
 
@@ -398,8 +481,9 @@ export function OperatorUserManagement() {
                 email: '',
                 full_name: '',
                 password: '',
-                operator_id: '',
-                regulator_id: '',
+                confirm_password: '',
+                operator_id: null,
+                regulator_id: null,
                 roles: ['operator']
             });
 
@@ -536,14 +620,14 @@ export function OperatorUserManagement() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                // onClick={() => openRegulatorDialog(regulator)}
+                                                onClick={() => openRegulatorDialog(regulator)}
                                             >
                                                 <Edit className="size-4" />
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                // onClick={() => handleDeleteRegulator(regulator.regulator_id)}
+                                                onClick={() => handleDeleteRegulator(regulator.regulator_id)}
                                             >
                                                 <Trash2 className="size-4 text-red-600" />
                                             </Button>
@@ -914,26 +998,106 @@ export function OperatorUserManagement() {
                             </div>
                         </div>
 
-                        {/* Password */}
-                        <div className="space-y-2">
-                            <Label htmlFor="password">
-                                Password{' '}
-                                {editingUser && (
-                                    <span className="text-xs text-gray-500">
-              (leave blank to keep current)
-            </span>
+                        {/* Password Fields */}
+                        <div className="space-y-4">
+                            {/* Password Field */}
+                            <div className="space-y-2">
+                                <Label htmlFor="password">
+                                    Password{' '}
+                                    {editingUser && (
+                                        <span className="text-xs text-gray-500">
+                                            (leave blank to keep current)
+                                        </span>
+                                    )}
+                                </Label>
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="••••••••"
+                                        value={userForm.password}
+                                        onChange={(e) =>
+                                            setUserForm({ ...userForm, password: e.target.value })
+                                        }
+                                        required={!editingUser}
+                                        className={`pr-10 ${
+                                            userForm.password && getPasswordValidation(userForm.password).isValid
+                                                ? 'border-green-500 focus:border-green-500'
+                                                : userForm.password && !getPasswordValidation(userForm.password).isValid
+                                                ? 'border-red-500 focus:border-red-500'
+                                                : ''
+                                        }`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="size-4" />
+                                        ) : (
+                                            <Eye className="size-4" />
+                                        )}
+                                    </button>
+                                </div>
+                                {userForm.password && (
+                                    <div className={`text-xs flex items-center gap-1 ${
+                                        getPasswordValidation(userForm.password).isValid
+                                            ? 'text-green-600'
+                                            : 'text-red-600'
+                                    }`}>
+                                        <AlertCircle className="size-3" />
+                                        {getPasswordValidation(userForm.password).message}
+                                    </div>
                                 )}
-                            </Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                placeholder="••••••••"
-                                value={userForm.password}
-                                onChange={(e) =>
-                                    setUserForm({ ...userForm, password: e.target.value })
-                                }
-                                required={!editingUser}
-                            />
+                            </div>
+
+                            {/* Confirm Password Field */}
+                            {userForm.password && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirm_password">Confirm Password *</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="confirm_password"
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            placeholder="••••••••"
+                                            value={userForm.confirm_password}
+                                            onChange={(e) =>
+                                                setUserForm({ ...userForm, confirm_password: e.target.value })
+                                            }
+                                            required={!!userForm.password}
+                                            className={`pr-10 ${
+                                                userForm.confirm_password && getConfirmPasswordValidation(userForm.password, userForm.confirm_password).isValid
+                                                    ? 'border-green-500 focus:border-green-500'
+                                                    : userForm.confirm_password && !getConfirmPasswordValidation(userForm.password, userForm.confirm_password).isValid
+                                                    ? 'border-red-500 focus:border-red-500'
+                                                    : ''
+                                            }`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                        >
+                                            {showConfirmPassword ? (
+                                                <EyeOff className="size-4" />
+                                            ) : (
+                                                <Eye className="size-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                    {userForm.confirm_password && (
+                                        <div className={`text-xs flex items-center gap-1 ${
+                                            getConfirmPasswordValidation(userForm.password, userForm.confirm_password).isValid
+                                                ? 'text-green-600'
+                                                : 'text-red-600'
+                                        }`}>
+                                            <AlertCircle className="size-3" />
+                                            {getConfirmPasswordValidation(userForm.password, userForm.confirm_password).message}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Regulator + Operator */}
@@ -1066,15 +1230,15 @@ export function OperatorUserManagement() {
                     </DialogHeader>
                     {userToDelete && (
                         <div className="py-4">
-                            <div className="bg-gray-50 rounded-lg p-4 border">
+                            <div className="bg-background rounded-lg p-4 border">
                                 <div className="flex items-center gap-3">
                                     <div className="size-10 bg-red-100 rounded-full flex items-center justify-center">
                                         <UserPlus className="size-5 text-red-600" />
                                     </div>
                                     <div>
                                         <p className="font-medium">{userToDelete.full_name || 'N/A'}</p>
-                                        <p className="text-sm text-gray-600">{userToDelete.email}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-sm text-muted-foreground">{userToDelete.email}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
                                             ID: #{userToDelete.user_id} • Role: {typeof userToDelete.roles?.[0] === 'string' ? userToDelete.roles[0] : userToDelete.roles?.[0]?.name || 'operator'}
                                         </p>
                                     </div>
@@ -1112,15 +1276,15 @@ export function OperatorUserManagement() {
                     </DialogHeader>
                     {operatorToDelete && (
                         <div className="py-4">
-                            <div className="bg-gray-50 rounded-lg p-4 border">
+                            <div className="bg-background rounded-lg p-4 border">
                                 <div className="flex items-center gap-3">
                                     <div className="size-10 bg-red-100 rounded-full flex items-center justify-center">
                                         <Building2 className="size-5 text-red-600" />
                                     </div>
                                     <div>
                                         <p className="font-medium">{operatorToDelete.operator_name}</p>
-                                        <p className="text-sm text-gray-600">License: {operatorToDelete.license_number}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-sm text-muted-foreground">License: {operatorToDelete.license_number}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
                                             ID: #{operatorToDelete.operator_id} • {users.filter(u => u.operator_id === operatorToDelete.operator_id).length} associated users
                                         </p>
                                     </div>
@@ -1139,6 +1303,52 @@ export function OperatorUserManagement() {
                         >
                             <Trash2 className="size-4 mr-2" />
                             Delete Operator
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Regulator Confirmation Dialog */}
+            <Dialog open={regulatorDeleteDialogOpen} onOpenChange={setRegulatorDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="size-5" />
+                            Delete Regulator
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this regulator? This action cannot be undone and will affect all associated operators and users.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {regulatorToDelete && (
+                        <div className="py-4">
+                            <div className="bg-background rounded-lg p-4 border">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-red-100 rounded-full flex items-center justify-center">
+                                        <Globe className="size-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{regulatorToDelete.regulator_name}</p>
+                                        <p className="text-sm text-muted-foreground">Country: {regulatorToDelete.country}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            ID: #{regulatorToDelete.regulator_id} • {operators.filter(op => op.regulator_id === regulatorToDelete.regulator_id).length} associated operators
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button variant="outline" onClick={cancelDeleteRegulator}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={confirmDeleteRegulator}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            <Trash2 className="size-4 mr-2" />
+                            Delete Regulator
                         </Button>
                     </div>
                 </DialogContent>

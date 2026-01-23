@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { reportsAPI } from '@/utils/API.ts';
-import { Upload, FileSpreadsheet, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MonthPicker } from '@/components/ui/month-picker';
 import type { DecodedToken } from '@/components/regulator/RegulatorDashboard';
 import { jwtDecode } from 'jwt-decode';
+import { tokenManager } from '@/utils/security.ts';
 
 interface MaglaSubmissionFormProps {
     open: boolean;
@@ -26,7 +27,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
     const [submissionType, setSubmissionType] = useState<'online' | 'offline'>('online');
 
     useEffect(() => {
-        const token = localStorage.getItem("authToken");
+        const token = tokenManager.getToken();
         if (token) {
             try {
                 const decoded = jwtDecode<DecodedToken>(token);
@@ -122,11 +123,11 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
     const getStatusMessage = () => {
         switch (uploadStatus) {
             case 'validating':
-                return { text: 'Validating Magla regulator document structure...', color: 'blue' };
+                return { text: 'Validating document structure...', color: 'blue' };
             case 'processing':
-                return { text: 'Processing Magla regulatory data...', color: 'blue' };
+                return { text: 'Processing regulatory data...', color: 'blue' };
             case 'success':
-                return { text: 'Magla document submitted successfully!', color: 'green' };
+                return { text: 'Document submitted successfully!', color: 'green' };
             case 'error':
                 return { text: 'Upload failed. Please check the file and try again.', color: 'red' };
             default:
@@ -152,13 +153,13 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                            <Upload className="w-4 h-4 text-orange-600" />
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Upload className="w-4 h-4 text-blue-600" />
                         </div>
-                        Submit Magla Regulator Document
+                        Submit Document
                     </DialogTitle>
                     <DialogDescription>
-                        Upload regulatory documents for Magla authority compliance
+                        Upload regulatory document for compliance
                     </DialogDescription>
                 </DialogHeader>
 
@@ -186,7 +187,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                                     value="online"
                                     checked={submissionType === 'online'}
                                     onChange={() => setSubmissionType('online')}
-                                    className="accent-orange-600"
+                                    className="accent-blue-600"
                                     required
                                 />
                                 Online
@@ -199,7 +200,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                                     value="offline"
                                     checked={submissionType === 'offline'}
                                     onChange={() => setSubmissionType('offline')}
-                                    className="accent-orange-600"
+                                    className="accent-blue-600"
                                     required
                                 />
                                 Offline
@@ -209,7 +210,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
 
                     {/* File Upload Area */}
                     <div className="space-y-2">
-                        <Label htmlFor="magla-file">Magla Document File *</Label>
+                        <Label htmlFor="magla-file">Document File *</Label>
                         <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-ring transition-colors">
                             <input
                                 id="magla-file"
@@ -221,9 +222,9 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                             <label htmlFor="magla-file" className="cursor-pointer">
                                 {selectedFile ? (
                                     <div className="space-y-3">
-                                        <FileSpreadsheet className="size-10 mx-auto text-orange-600" />
+                                        <FileSpreadsheet className="size-10 mx-auto text-blue-600" />
                                         <div>
-                                            <p className="font-medium text-orange-900">{selectedFile.name}</p>
+                                            <p className="font-medium text-blue-900">{selectedFile.name}</p>
                                             <p className="text-sm text-muted-foreground">
                                                 {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                                             </p>
@@ -245,7 +246,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                                     <div className="space-y-3">
                                         <Upload className="size-10 mx-auto text-muted-foreground" />
                                         <div>
-                                            <p className="font-medium">Click to upload Magla document</p>
+                                            <p className="font-medium">Click to upload document</p>
                                             <p className="text-sm text-muted-foreground">or drag and drop</p>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
@@ -291,21 +292,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                         </div>
                     )}
 
-                    {/* Magla Specific Information */}
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                            <Info className="size-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                            <div className="text-sm text-orange-800">
-                                <p className="font-medium mb-1">Magla Regulator Requirements</p>
-                                <ul className="space-y-1 text-orange-700">
-                                    <li>• Documents must comply with Magla authority formatting standards</li>
-                                    <li>• Include all required regulatory compliance data</li>
-                                    <li>• Files will be validated for Magla-specific requirements</li>
-                                    <li>• Processing time may vary based on document complexity</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Remove requirements section */}
 
                     <DialogFooter className="flex gap-3">
                         <Button 
@@ -319,7 +306,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                         <Button
                             type="submit"
                             disabled={isSubmitting || !selectedFile || !month}
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-blue-600 hover:bg-blue-700"
                         >
                             {isSubmitting ? (
                                 <>
@@ -329,7 +316,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                             ) : (
                                 <>
                                     <Upload className="size-4 mr-2" />
-                                    Submit to Magla
+                                    Submit Document
                                 </>
                             )}
                         </Button>

@@ -7,6 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import type {DecodedToken} from "@/types/token.ts";
 import {RegulatorDashboard} from "@/components/regulator/RegulatorDashboard.tsx";
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { tokenManager } from '@/utils/security.ts';
 
 export default function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,7 +38,7 @@ export default function App() {
 
     const handleAuthSuccess = async () => {
         try {
-            const token = localStorage.getItem("authToken");
+            const token = tokenManager.getToken();
             if (!token) {
                 console.error("No auth token found");
                 return;

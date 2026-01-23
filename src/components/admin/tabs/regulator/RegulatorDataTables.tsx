@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
-    CardDescription,
 } from '@/components/ui/card.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
 import { motion } from 'motion/react';
@@ -133,16 +132,6 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
         );
     };
 
-    const filteredOnlineStake = useMemo(() => filterOperators(perOpOnlineStake), [perOpOnlineStake, searchTerm]);
-    const filteredOnlineGGR = useMemo(() => filterOperators(perOpOnlineGGR), [perOpOnlineGGR, searchTerm]);
-    const filteredOfflineStake = useMemo(() => filterOperators(perOpOfflineStake), [perOpOfflineStake, searchTerm]);
-    const filteredOfflineGGR = useMemo(() => filterOperators(perOpOfflineGGR), [perOpOfflineGGR, searchTerm]);
-    const filteredMergedData = useMemo(() => {
-        const stake = filterOperators(perOpOfflineStake);
-        const ggr = filterOperators(perOpOfflineGGR);
-        return mergeOperatorMetrics(stake, ggr);
-    }, [perOpOfflineStake, perOpOfflineGGR, searchTerm]);
-
     const toggleSort = (tab: 'online' | 'offline') => {
         setSortOrders(prev => ({ ...prev, [tab]: prev[tab] === 'desc' ? 'asc' : 'desc' }));
     };
@@ -242,7 +231,7 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                 {(['online','offline'] as const).map(tab => {
                     const stakeData = tab==='online'? perOpOnlineStake: perOpOfflineStake;
                     const ggrData = tab==='online'? perOpOnlineGGR: perOpOfflineGGR;
-                    const mergedData = mergeOperatorMetrics(stakeData, ggrData);
+                    const mergedData = mergeOperatorMetrics(filterOperators(stakeData), filterOperators(ggrData));
 
                     return (
                         <TabsContent key={tab} value={tab} className="space-y-8">
@@ -286,9 +275,9 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            {filteredOnlineStake.length===0 && searchTerm.trim()!==''?
+                                            {stakeData.length===0 && searchTerm.trim()!==''?
                                                 <tr><td colSpan={allMonthKeys.length+2} className="p-6"><NoDataState message="No operators found matching your search"/></td></tr>:
-                                                filteredOnlineStake.map((row,idx)=>(
+                                                sortByTotal(filterOperators(stakeData), tab).map((row,idx)=>(
                                                     <motion.tr key={idx} initial={{opacity:0, x:-10}} animate={{opacity:1, x:0}} transition={{delay:idx*0.04}} className="border-b hover:bg-muted/50">
                                                         <td className="p-3 font-medium">{row.operator}</td>
                                                         {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono">{row[m]?formatCurrency(row[m] as number):''}</td>)}
@@ -321,7 +310,7 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            {mergedData.map((row,idx)=>(
+                                            {mergeOperatorMetrics(filterOperators(stakeData), filterOperators(ggrData)).map((row,idx)=>(
                                                 <tr key={idx} className="border-b hover:bg-muted/50">
                                                     <td className="p-3 font-medium">{row.operator}</td>
                                                     {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono">{formatCurrency(row[`${m}_payout`] as number)}</td>)}
@@ -353,9 +342,9 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            {filteredOnlineGGR.length===0 && searchTerm.trim()!==''?
+                                            {ggrData.length===0 && searchTerm.trim()!==''?
                                                 <tr><td colSpan={allMonthKeys.length+2} className="p-6"><NoDataState message="No operators found matching your search"/></td></tr>:
-                                                filteredOnlineGGR.map((row,idx)=>(
+                                                sortByTotal(filterOperators(ggrData), tab).map((row,idx)=>(
                                                     <motion.tr key={idx} initial={{opacity:0, x:-10}} animate={{opacity:1, x:0}} transition={{delay:idx*0.04}} className="border-b hover:bg-muted/50">
                                                         <td className="p-3 font-medium">{row.operator}</td>
                                                         {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono text-green-600 dark:text-green-400">{row[m]?formatCurrency(row[m] as number):''}</td>)}
@@ -388,9 +377,9 @@ export function RegulatorDataTables({ regulatorId }: RegulatorDataTablesProps) {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            {filteredMergedData.length===0 && searchTerm.trim()!==''?
+                                            {mergedData.length===0 && searchTerm.trim()!==''?
                                                 <tr><td colSpan={allMonthKeys.length+2} className="p-6"><NoDataState message="No operators found matching your search"/></td></tr>:
-                                                filteredMergedData.map((row,idx)=>(
+                                                mergedData.map((row,idx)=>(
                                                 <tr key={idx} className="border-b hover:bg-muted/50">
                                                     <td className="p-3 font-medium">{row.operator}</td>
                                                     {allMonthKeys.map(m=><td key={m} className="p-3 text-right font-mono">{formatPercent(row[`${m}_ggr_pct`] as number)}</td>)}

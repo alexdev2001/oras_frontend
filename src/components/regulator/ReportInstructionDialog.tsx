@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "motion/react";
 interface ReportInstructionsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onGetStarted?: () => void;
 }
 
 const TOTAL_STEPS = 4;
@@ -26,6 +27,7 @@ const TOTAL_STEPS = 4;
 export function ReportInstructionsDialog({
                                              open,
                                              onOpenChange,
+                                             onGetStarted,
                                          }: ReportInstructionsDialogProps) {
     const [step, setStep] = useState(0);
 
@@ -34,13 +36,19 @@ export function ReportInstructionsDialog({
         onOpenChange(false);
     };
 
+    const handleContinue = () => {
+        setStep(0);
+        onOpenChange(false);
+        onGetStarted?.();
+    };
+
     return (
         <Dialog open={open} onOpenChange={closeAndReset}>
             <DialogContent className="max-w-2xl overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <FileSpreadsheet className="size-5 text-indigo-600" />
-                        Regulatory Report Submission
+                        IGJ Regulatory Report Submission
                     </DialogTitle>
                     <DialogDescription>
                         Step {step + 1} of {TOTAL_STEPS}
@@ -110,11 +118,11 @@ export function ReportInstructionsDialog({
                                     Data Quality Rules
                                 </h3>
                                 <ul className="text-sm text-gray-700 space-y-2">
-                                    <li>• Currency must be consistent</li>
+                                    <li>• Currency must be consistent for IGJ reporting</li>
                                     <li>• GGR = Stake − Payout</li>
-                                    <li>• Levy calculated from GGR</li>
+                                    <li>• IGJ 4% and FUDOGO 6% levies calculated from GGR</li>
                                     <li>• No empty required fields</li>
-                                    <li>• Operator names must be licensed</li>
+                                    <li>• Operator names must be IGJ-licensed</li>
                                 </ul>
                             </div>
                         )}
@@ -128,7 +136,7 @@ export function ReportInstructionsDialog({
                                 className="space-y-3"
                             >
                                 <h3 className="font-semibold text-lg text-gray-900">
-                                    Example Spreadsheet Layout
+                                    IGJ Report Example Layout
                                 </h3>
 
                                 {/* ⬇️ Horizontal scroll ONLY here */}
@@ -217,10 +225,10 @@ export function ReportInstructionsDialog({
                                 </div>
 
                                 <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                                    • One operator per row
-                                    • One reporting month per file
+                                    • One operator per row for IGJ reporting
+                                    • One reporting month per IGJ file
                                     • GGR = Stake − Payout
-                                    • Levies calculated from GGR
+                                    • IGJ 4% and FUDOGO 6% levies calculated from GGR
                                 </p>
                             </motion.div>
                         )}
@@ -244,7 +252,7 @@ export function ReportInstructionsDialog({
                             <ArrowRight className="size-4 ml-2" />
                         </Button>
                     ) : (
-                        <Button onClick={closeAndReset}>
+                        <Button onClick={handleContinue}>
                             I Understand — Continue
                             <ArrowRight className="size-4 ml-2" />
                         </Button>

@@ -1,10 +1,21 @@
 
-const BASE_URL = `http://localhost:8000`;
+import { tokenManager, getSecureErrorMessage, API_BASE_URL } from './security.ts';
 
-// Helper to get auth header
+const BASE_URL = API_BASE_URL;
+
+// Helper to get auth header with enhanced security
 function getAuthHeader(): Record<string, string> {
-    const token = localStorage.getItem("authToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    const token = tokenManager.getToken();
+    if (!token) return {};
+    
+    // Check if token is expired
+    if (tokenManager.isTokenExpired(token)) {
+        tokenManager.removeToken();
+        window.location.href = '/'; // Redirect to login
+        return {};
+    }
+    
+    return { Authorization: `Bearer ${token}` };
 }
 
 // Auth API
@@ -38,22 +49,22 @@ export const authAPI = {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Signin failed");
+            throw new Error(getSecureErrorMessage({ status: response.status, error: data.error }));
         }
 
         if (data.access_token) {
-            localStorage.setItem("authToken", data.access_token);
+            tokenManager.setToken(data.access_token);
         }
 
         return data;
     },
 
     signout() {
-        localStorage.removeItem("authToken");
+        tokenManager.removeToken();
     },
 
     getSession() {
-        return localStorage.getItem("authToken");
+        return tokenManager.getToken();
     },
 
     // async getUser() {
@@ -722,7 +733,7 @@ export const managementAPI = {
 
     async updateRegulator(regulatorId: number, regulatorData: { regulator_name: string; country: string }) {
         const authHeader = await getAuthHeader();
-        const response = await fetch(`${BASE_URL}/management/regulators/${regulatorId}`, {
+        const response = await fetch(`${BASE_URL}/api/v1/regulators/${regulatorId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -742,7 +753,7 @@ export const managementAPI = {
 
     async deleteRegulator(regulatorId: number) {
         const authHeader = await getAuthHeader();
-        const response = await fetch(`${BASE_URL}/management/regulators/${regulatorId}`, {
+        const response = await fetch(`${BASE_URL}/api/v1/regulators/${regulatorId}`, {
             method: 'DELETE',
             headers: authHeader
         });

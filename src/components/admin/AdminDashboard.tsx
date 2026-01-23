@@ -32,6 +32,7 @@ import type {DecodedToken, RegulatorSubmission} from "@/components/regulator/Reg
 import {jwtDecode} from "jwt-decode";
 import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/RegulatorSubmissions.tsx";
 import type { DashboardAnalytics } from '@/types/report';
+import { tokenManager } from '@/utils/security.ts';
 import { analyticsAPI } from '@/utils/API';
 import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/RegulatorPredictionsTab.tsx";
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -87,7 +88,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [decodedRegulatorId, setDecodedRegulatorId] = useState<number | null>(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken');
+        const token = tokenManager.getToken();
         if (!token) return;
 
         try {

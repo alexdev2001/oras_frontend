@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label.tsx';
 import { jwtDecode } from 'jwt-decode';
 import type { DecodedToken } from '@/components/regulator/RegulatorDashboard.tsx';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { tokenManager } from '@/utils/security.ts';
 
 interface OperatorUser {
     user_metadata?: {
@@ -33,7 +34,7 @@ export function OperatorDashboard({ onSignOut }: OperatorDashboardProps) {
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken');
+        const token = tokenManager.getToken();
         if (!token) return;
 
         try {
