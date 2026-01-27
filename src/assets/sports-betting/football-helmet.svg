@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="helmetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B4513;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#654321;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Football Helmet Shape -->
+  <ellipse cx="50" cy="45" rx="35" ry="30" fill="url(#helmetGrad)" />
+  <!-- Face Mask -->
+  <rect x="30" y="40" width="40" height="25" rx="5" fill="none" stroke="#C0C0C0" stroke-width="2" />
+  <line x1="35" y1="40" x2="35" y2="65" stroke="#C0C0C0" stroke-width="2" />
+  <line x1="45" y1="40" x2="45" y2="65" stroke="#C0C0C0" stroke-width="2" />
+  <line x1="55" y1="40" x2="55" y2="65" stroke="#C0C0C0" stroke-width="2" />
+  <line x1="65" y1="40" x2="65" y2="65" stroke="#C0C0C0" stroke-width="2" />
+  <!-- Helmet Stripe -->
+  <rect x="20" y="35" width="60" height="8" fill="#FFFFFF" opacity="0.8" />
+  <!-- Ear Holes -->
+  <circle cx="25" cy="45" r="5" fill="#2C2C2C" />
+  <circle cx="75" cy="45" r="5" fill="#2C2C2C" />
+</svg>

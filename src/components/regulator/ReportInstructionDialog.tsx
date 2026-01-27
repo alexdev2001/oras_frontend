@@ -13,6 +13,9 @@ import {
     ArrowRight,
     ArrowLeft,
     ShieldCheck,
+    Calendar,
+    Radio,
+    Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -22,7 +25,7 @@ interface ReportInstructionsDialogProps {
     onGetStarted?: () => void;
 }
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 6;
 
 export function ReportInstructionsDialog({
                                              open,
@@ -55,7 +58,7 @@ export function ReportInstructionsDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* SLIDES */}
+                        {/* SLIDES */}
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={step}
@@ -65,8 +68,128 @@ export function ReportInstructionsDialog({
                         transition={{ duration: 0.25 }}
                         className="min-h-[320px] flex flex-col justify-center overflow-hidden"
                     >
-                        {/* STEP 1 — FILE RULES */}
+                        {/* STEP 1 — MONTH SELECTION */}
                         {step === 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="space-y-4"
+                            >
+                                <h3 className="font-semibold text-lg flex items-center gap-2">
+                                    <Calendar className="text-blue-600" />
+                                    Select Report Month
+                                </h3>
+                                
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
+                                >
+                                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3">
+                                        📅 When submitting your report, you'll need to select:
+                                    </p>
+                                    
+                                    <motion.div
+                                        initial={{ x: -20, opacity: 0 }}
+                                        animate={{ x: 0, opacity: 1 }}
+                                        transition={{ delay: 0.3 }}
+                                        className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-md p-3 shadow-sm"
+                                    >
+                                        <Calendar className="size-5 text-blue-600" />
+                                        <div>
+                                            <p className="font-semibold text-sm">Month Picker</p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                Choose the exact month your report covers
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                    
+                                    <motion.div
+                                        initial={{ x: 20, opacity: 0 }}
+                                        animate={{ x: 0, opacity: 1 }}
+                                        transition={{ delay: 0.4 }}
+                                        className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800"
+                                    >
+                                        <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+                                            ⚠️ Important: One month per file only!
+                                        </p>
+                                        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                                            Each report file must contain data for a single reporting month
+                                        </p>
+                                    </motion.div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 2 — ONLINE/OFFLINE SELECTION */}
+                        {step === 1 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="space-y-4"
+                            >
+                                <h3 className="font-semibold text-lg flex items-center gap-2">
+                                    <Radio className="text-green-600" />
+                                    Choose Report Type
+                                </h3>
+                                
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
+                                >
+                                    <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-4">
+                                        🎯 Select your report type using radio buttons:
+                                    </p>
+                                    
+                                    <div className="space-y-3">
+                                        <motion.div
+                                            initial={{ x: -20, opacity: 0 }}
+                                            animate={{ x: 0, opacity: 1 }}
+                                            transition={{ delay: 0.3 }}
+                                            className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-md border-2 border-green-500 shadow-sm"
+                                        >
+                                            <motion.div
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                transition={{ delay: 0.4, type: "spring" }}
+                                                className="w-4 h-4 rounded-full border-2 border-green-500 bg-green-500 flex items-center justify-center"
+                                            >
+                                                <div className="w-2 h-2 rounded-full bg-white" />
+                                            </motion.div>
+                                            <div className="flex-1">
+                                                <p className="font-semibold text-sm">🌐 Online</p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                    For online betting and gaming activities
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                        
+                                        <motion.div
+                                            initial={{ x: -20, opacity: 0 }}
+                                            animate={{ x: 0, opacity: 1 }}
+                                            transition={{ delay: 0.5 }}
+                                            className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600"
+                                        >
+                                            <div className="w-4 h-4 rounded-full border-2 border-gray-400" />
+                                            <div className="flex-1">
+                                                <p className="font-semibold text-sm">🏪 Offline</p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                    For physical betting shops and retail activities
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 3 — FILE RULES */}
+                        {step === 2 && (
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-lg flex items-center gap-2">
                                     <CheckCircle className="text-green-600" />
@@ -81,8 +204,8 @@ export function ReportInstructionsDialog({
                             </div>
                         )}
 
-                        {/* STEP 2 — REQUIRED FIELDS */}
-                        {step === 1 && (
+                        {/* STEP 4 — REQUIRED FIELDS */}
+                        {step === 3 && (
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-lg">
                                     Required Columns
@@ -110,8 +233,8 @@ export function ReportInstructionsDialog({
                             </div>
                         )}
 
-                        {/* STEP 3 — DATA QUALITY */}
-                        {step === 2 && (
+                        {/* STEP 5 — DATA QUALITY */}
+                        {step === 4 && (
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-lg flex items-center gap-2">
                                     <ShieldCheck className="text-amber-600" />
@@ -127,8 +250,8 @@ export function ReportInstructionsDialog({
                             </div>
                         )}
 
-                        {/* STEP 4 — EXAMPLE */}
-                        {step === 3 && (
+                        {/* STEP 6 — EXAMPLE */}
+                        {step === 5 && (
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}

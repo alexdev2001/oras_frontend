@@ -1,0 +1,40 @@
+/* Custom animations for admin dashboard patterns */
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+}
+
+/* Delay utilities for staggered animations */
+.delay-75 {
+    animation-delay: 75ms;
+}
+
+.delay-150 {
+    animation-delay: 150ms;
+}
+
+.delay-300 {
+    animation-delay: 300ms;
+}

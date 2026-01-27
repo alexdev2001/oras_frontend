@@ -78,13 +78,14 @@ export const authAPI = {
 
 // Reports API
 export const reportsAPI = {
-    async submitReport(operatorId: number, uploadedBy: number, file: File) {
+    async submitReport(operatorId: number, uploadedBy: number, file: File, date: string) {
 
         // 1. Create a FormData object to handle the multipart request
         const formData = new FormData();
         // Append non-file parameters as strings
         formData.append('operator_id', operatorId.toString());
         formData.append('uploaded_by', uploadedBy.toString());
+        formData.append('date', date);
         // Append the file, using 'file' as the key to match the backend endpoint
         formData.append('file', file);
 
@@ -99,7 +100,7 @@ export const reportsAPI = {
         if (!response.ok) {
             const error = await response.json();
             console.error('Report submission failed:', error);
-            throw new Error(error.error || 'Report submission failed');
+            throw new Error(error.detail || error.error || 'Report submission failed');
         }
 
         return response.json();
@@ -330,6 +331,7 @@ export const reportsAPI = {
         month: string,
         submissionType: 'online' | 'offline',
         file: File,
+        operatorId?: number,
     ) {
         if (!file) throw new Error('File object is missing.');
 
@@ -337,6 +339,10 @@ export const reportsAPI = {
         formData.append('month_year', month);
         formData.append('report_type_status', submissionType);
         formData.append('file', file);
+        
+        if (operatorId) {
+            formData.append('operator_id', operatorId.toString());
+        }
 
         const response = await fetch(`${BASE_URL}/api/v1/regulators/submit_metrics`, {
             method: 'POST',
@@ -488,7 +494,7 @@ export const analyticsAPI = {
 export const managementAPI = {
     async getOperators() {
         const authHeader = await getAuthHeader();
-        const response = await fetch(`${BASE_URL}/api/v1/operators`, {
+        const response = await fetch(`${BASE_URL}/api/v1/operators_magla`, {
             method: 'GET',
             headers: authHeader
         });
@@ -518,7 +524,7 @@ export const managementAPI = {
 
     async createOperator(operatorData: { operator_name: string; license_number: string }) {
         const authHeader = await getAuthHeader();
-        const response = await fetch(`${BASE_URL}/api/v1/operators/`, {
+        const response = await fetch(`${BASE_URL}/api/v1/operators_magla/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

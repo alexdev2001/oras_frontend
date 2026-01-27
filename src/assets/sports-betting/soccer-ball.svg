@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="soccerGrad">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0E0E0;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Soccer Ball -->
+  <circle cx="50" cy="50" r="35" fill="url(#soccerGrad)" stroke="#000000" stroke-width="2" />
+  
+  <!-- Pentagon Pattern -->
+  <!-- Center Pentagon -->
+  <polygon points="50,30 58,38 58,48 50,56 42,48 42,38" fill="#000000" />
+  
+  <!-- Surrounding Pentagons -->
+  <polygon points="30,25 38,30 35,40 25,40 22,30" fill="#000000" />
+  <polygon points="70,25 78,30 75,40 65,40 62,30" fill="#000000" />
+  <polygon points="25,60 35,60 38,70 30,75 22,70" fill="#000000" />
+  <polygon points="65,60 75,60 78,70 70,75 62,70" fill="#000000" />
+  <polygon points="50,65 58,72 55,82 45,82 42,72" fill="#000000" />
+  
+  <!-- Connecting Lines -->
+  <line x1="42" y1="38" x2="38" y2="30" stroke="#000000" stroke-width="1" />
+  <line x1="58" y1="38" x2="62" y2="30" stroke="#000000" stroke-width="1" />
+  <line x1="42" y1="48" x2="35" y2="60" stroke="#000000" stroke-width="1" />
+  <line x1="58" y1="48" x2="65" y2="60" stroke="#000000" stroke-width="1" />
+  <line x1="50" y1="56" x2="50" y2="65" stroke="#000000" stroke-width="1" />
+</svg>

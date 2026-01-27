@@ -361,9 +361,7 @@ export function MetricsTab({
     );
 }
 
-/* =======================
-   KPI card with hover dialog
-======================= */
+
 function Kpi({ icon: Icon, label, value }: any) {
     return (
         <Card>

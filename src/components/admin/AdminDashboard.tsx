@@ -3,39 +3,30 @@ import { Button } from '@/components/ui/button';
 import {
     LogOut,
     BarChart3,
-    FileCheck,
     Users,
-    Database,
     FileText,
-    Filter,
-    Building2,
-    Menu,
-    X,
     Landmark,
     Calendar,
-    Grid, TrendingUp
+    Grid, TrendingUp,
+    Goal
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AnalyticsOverview } from './tabs/AnalyticsOverview.tsx';
-import { ReconciliationView } from './tabs/ReconciliationView.tsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.tsx';
 import { Label } from '@/components/ui/label.tsx';
-import { ReportsTab } from './tabs/ReportsTab.tsx';
 import { authAPI, managementAPI, reportsAPI } from '@/utils/API.ts';
 import { Card, CardContent } from '@/components/ui/card.tsx';
 import { OperatorUserManagement } from '@/components/admin/tabs/OperatorUserManagement.tsx';
-import type { Operator } from '@/components/admin/tabs/OperatorUserManagement.tsx';
 import {type Metric, MetricsTab} from "@/components/admin/tabs/regulator/MetricsTab.tsx";
 import {MonthlySummaryGenerator} from "@/components/summary/MonthlySummaryGenerator.tsx";
 import {AdminRegulatorDataTables, type RegulatorAnalytics} from "@/components/admin/AdminRegulatorDataTables.tsx";
 import type {DecodedToken, RegulatorSubmission} from "@/components/regulator/RegulatorDashboard.tsx";
 import {jwtDecode} from "jwt-decode";
 import {AdminRegulatorSubmissions} from "@/components/admin/tabs/regulator/RegulatorSubmissions.tsx";
-import type { DashboardAnalytics } from '@/types/report';
 import { tokenManager } from '@/utils/security.ts';
 import { analyticsAPI } from '@/utils/API';
 import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/RegulatorPredictionsTab.tsx";
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Menu, X } from 'lucide-react';
 
 interface AdminDashboardProps {
     onSignOut: () => void;
@@ -54,13 +45,6 @@ interface Regulator {
     regulator_name: string;
 }
 
-const operatorTabs = [
-    { value: 'overview', label: 'Analytics Overview', icon: BarChart3 },
-    { value: 'reports', label: 'Reports', icon: FileText },
-    { value: 'reconciliation', label: 'EMS Reconciliation', icon: Database },
-    { value: 'users', label: 'User Management', icon: Users },
-];
-
 const regulatorTabs = [
     { value: 'dashboard', label: 'Overview', icon: Grid },
     { value: 'metrics', label: 'Metrics', icon: BarChart3 },
@@ -71,19 +55,13 @@ const regulatorTabs = [
 
 export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [user, setUser] = useState<User | null>(null);
-    const [mode, setMode] = useState<'operator' | 'regulator'>('regulator');
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [operators, setOperators] = useState<Operator[]>([]);
-    const [selectedOperator, setSelectedOperator] = useState<string>('all');
     const [regulators, setRegulators] = useState<Regulator[]>([]);
     const [selectedRegulator, setSelectedRegulator] = useState<string>('all');
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
-    const [loadingOperators, setLoadingOperators] = useState(true);
     const [metrics, setMetrics] = useState<Metric[]>([]);
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
-    const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-    const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
     const [regulatorAnalytics, setRegulatorAnalytics] = useState<RegulatorAnalytics[]>([]);
     const [decodedRegulatorId, setDecodedRegulatorId] = useState<number | null>(null);
 
@@ -116,11 +94,9 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     }, [regulators]);
 
     useEffect(() => {
-        loadOperators();
         loadRegulators();
         loadRegulatorMetrics();
         loadSubmissions();
-        loadAnalytics();
         loadRegulatorAnalytics();
     }, []);
 
@@ -155,44 +131,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         }
     }
 
-    const loadAnalytics = async () => {
-        try {
-            setIsAnalyticsLoading(true);
-
-            let operatorId: number | null = null;
-
-            if (mode === 'operator' && selectedOperator !== 'all') {
-                operatorId = Number(selectedOperator);
-            }
-
-            const data = await analyticsAPI.getAnalyticsByOperatorId(operatorId);
-            setAnalytics(data);
-        } catch (error) {
-            console.error('Failed to load analytics:', error);
-            setAnalytics(null);
-        } finally {
-            setIsAnalyticsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        // Reset active tab when mode changes
-        setActiveTab(mode === 'operator' ? 'overview' : 'dashboard');
-        setMobileMenuOpen(false);
-    }, [mode]);
-
-    const loadOperators = async () => {
-        try {
-            setLoadingOperators(true);
-            const operatorsData = await managementAPI.getOperators();
-            setOperators((operatorsData || []).filter(op => op && op.operator_id));
-        } catch (error) {
-            console.error('Failed to load operators:', error);
-        } finally {
-            setLoadingOperators(false);
-        }
-    };
-
     const loadRegulatorMetrics = async () => {
         try {
             const metricsData = await reportsAPI.getRegulatorMetrics();
@@ -222,8 +160,8 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         }
     };
 
-    // Render tabs based on mode
-    const tabs = mode === 'operator' ? operatorTabs : regulatorTabs;
+    // Render tabs for regulator mode
+    const tabs = regulatorTabs;
 
     // Render content for regulator tabs (placeholder for now)
     function RegulatorTabContent({ value }: { value: string }) {
@@ -298,14 +236,14 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                     <div className="flex items-center justify-between">
                         <div className="text-white">
                             <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-                            <p className="text-blue-100 mt-1 text-sm font-medium">Gaming Operator Reporting System</p>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">Gaming Regulatory Reporting System</p>
                         </div>
                         <div className="flex items-center gap-4">
-                            <ThemeToggle />
                             <div className="text-right mr-2 hidden sm:block">
                                 <p className="text-sm font-medium text-white">{user?.email}</p>
                                 <p className="text-xs text-blue-100">Administrator</p>
                             </div>
+                            <ThemeToggle />
                             <Button
                                 variant="outline"
                                 onClick={handleSignOut}
@@ -322,174 +260,209 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Mode Switcher & Filters Card */}
-                <Card className="mb-6 shadow-md border-0 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-6">
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                            {/* Mode Switcher */}
-                            <div className="flex flex-col gap-2">
-                                <Label className="text-sm font-semibold text-foreground">View Mode</Label>
-                                <div className="inline-flex rounded-lg bg-muted p-1 shadow-inner">
-                                    <button
-                                        onClick={() => setMode('regulator')}
-                                        className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
-                                            mode === 'regulator'
-                                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md transform scale-105'
-                                                : 'text-foreground hover:text-foreground/80'
-                                        }`}
+                <div className="mb-6">
+                    
+                    {/* Main Filter Card */}
+                    <Card className="relative shadow-md border-0 bg-card/90 backdrop-blur-sm dark:bg-card/95 overflow-hidden">
+                        {/* Inner Glow Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-pink-500/10 rounded-[--radius] pointer-events-none" />
+                        
+                        {/* Sports Betting Graphics Background */}
+                        <div className="absolute inset-0 opacity-45 dark:opacity-30 pointer-events-none">
+                            {/* Top Right Section */}
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute right-20 top-2 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Slot Machine" 
+                                className="absolute right-2 top-4 w-14 h-14 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Roulette Wheel" 
+                                className="absolute right-12 top-16 w-12 h-12 opacity-40"
+                            />
+                            
+                            {/* Middle Right Section */}
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Poker Cards" 
+                                className="absolute right-16 top-32 w-16 h-16 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Betting Ticket" 
+                                className="absolute right-4 top-40 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute right-24 top-44 w-14 h-14 opacity-40"
+                            />
+                            
+                            {/* Lower Middle Right Section */}
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Basketball" 
+                                className="absolute right-8 top-60 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute right-20 top-68 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/dice.svg" 
+                                alt="Dice" 
+                                className="absolute right-2 top-72 w-12 h-12 opacity-30"
+                            />
+                            
+                            {/* Bottom Right Section */}
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips Stack" 
+                                className="absolute right-12 bottom-8 w-14 h-14 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="More Cards" 
+                                className="absolute right-28 bottom-12 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Second Trophy" 
+                                className="absolute right-4 bottom-20 w-10 h-10 opacity-25"
+                            />
+                            
+                            {/* Additional Right Side Elements */}
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Small Roulette" 
+                                className="absolute right-32 top-24 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Small Slot" 
+                                className="absolute right-36 top-56 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Small Basketball" 
+                                className="absolute right-40 bottom-16 w-10 h-10 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/dice.svg" 
+                                alt="Small Dice" 
+                                className="absolute right-44 top-40 w-10 h-10 opacity-20"
+                            />
+                            
+                            {/* Pattern Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 via-purple-500/3 to-red-500/3 dark:from-blue-500/6 dark:via-purple-500/6 dark:to-red-500/6" />
+                        </div>
+                        
+                        <CardContent className="relative p-6">
+                            
+                            <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                                {/* Logo Section with Enhanced Styling */}
+                                <div className="flex items-center relative">
+                                    {/* Logo Glow */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 dark:from-indigo-400/30 dark:to-purple-400/30 rounded-xl blur-xl" />
+                                    
+                                    {/* Enhanced Logo Container */}
+                                    <div className="relative flex items-center justify-center size-20 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg ring-2 ring-white/10 dark:ring-black/20">
+                                        {/* Inner Pattern */}
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent rounded-xl" />
+                                        
+                                        {/* Logo Icon */}
+                                        <Goal className="relative size-10 text-white drop-shadow-sm" />
+                                    </div>
+                                </div>
+                                
+                                {/* Filters with Enhanced Styling */}
+                                <div className="relative flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1 lg:justify-end">
+                                {/* Regulator Filter */}
+                                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                    <Label
+                                        htmlFor="regulator-filter"
+                                        className="text-sm font-semibold text-foreground flex items-center gap-2"
                                     >
-                                        <FileCheck className="size-4 inline mr-2" />
+                                        <Landmark className="size-4 text-purple-600" />
                                         Regulator
-                                    </button>
-                                    <button
-                                        onClick={() => setMode('operator')}
-                                        className={`px-6 py-2.5 rounded-md text-sm font-semibold transition-all duration-200 ${
-                                            mode === 'operator'
-                                                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md transform scale-105'
-                                                : 'text-foreground hover:text-foreground/80'
-                                        }`}
+                                    </Label>
+                                    <Select
+                                        value={selectedRegulator}
+                                        onValueChange={setSelectedRegulator}
                                     >
-                                        <Building2 className="size-4 inline mr-2" />
-                                        Operator
-                                    </button>
-                                </div>
-                            </div>
-
-
-                            {/* Filters - Only show for operator mode */}
-                            {mode === 'operator' && (
-                                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1 lg:justify-end">
-                                    {/* Operator Filter */}
-                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                        <Label htmlFor="operator-filter" className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                            <Filter className="size-4 text-indigo-600" />
-                                            Operator
-                                        </Label>
-                                        <Select value={selectedOperator} onValueChange={setSelectedOperator}>
-                                            <SelectTrigger id="operator-filter" className="w-full sm:w-[220px] border-input focus:border-ring focus:ring-ring">
-                                                <SelectValue placeholder="Loading operators..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
-                                                    <span className="font-medium">All Operators</span>
-                                                </SelectItem>
-                                                {operators.map(op => (
-                                                    <SelectItem key={op.operator_id} value={op.operator_id.toString()}>
-                                                        {op.operator_name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Month Filter */}
-                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                        <Label htmlFor="month-filter" className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                            <Filter className="size-4 text-indigo-600" />
-                                            Month
-                                        </Label>
-                                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                            <SelectTrigger id="month-filter" className="w-full sm:w-[200px] border-input focus:border-ring focus:ring-ring">
-                                                <SelectValue placeholder="All Months" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
-                                                    <span className="font-medium">All Months</span>
-                                                </SelectItem>
-
-                                                {months.map(month => (
-                                                    <SelectItem key={month.value} value={month.value}>
-                                                        {month.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Filters - Only show for regulator mode */}
-                            {mode === 'regulator' && (
-                                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1 lg:justify-end">
-                                    {/* Regulator Filter */}
-                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                        <Label
-                                            htmlFor="regulator-filter"
-                                            className="text-sm font-semibold text-foreground flex items-center gap-2"
+                                        <SelectTrigger
+                                            id="regulator-filter"
+                                            className="w-full sm:w-[220px] border-input focus:border-ring focus:ring-ring"
                                         >
-                                            <Landmark className="size-4 text-purple-600" />
-                                            Regulator
-                                        </Label>
-                                        <Select
-                                            value={selectedRegulator}
-                                            onValueChange={setSelectedRegulator}
-                                        >
-                                            <SelectTrigger
-                                                id="regulator-filter"
-                                                className="w-full sm:w-[220px] border-input focus:border-ring focus:ring-ring"
-                                            >
-                                                <SelectValue placeholder="Loading regulators..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
+                                            <SelectValue placeholder="Loading regulators..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">
                         <span className="font-medium">
                             All Regulators
                         </span>
+                                            </SelectItem>
+                                            {regulators.map((reg) => (
+                                                <SelectItem
+                                                    key={reg.regulator_id}
+                                                    value={reg.regulator_name}
+                                                >
+                                                    {reg.regulator_name}
                                                 </SelectItem>
-                                                {regulators.map((reg) => (
-                                                    <SelectItem
-                                                        key={reg.regulator_id}
-                                                        value={reg.regulator_name}
-                                                    >
-                                                        {reg.regulator_name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                                    {/* Month Filter */}
-                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                        <Label
-                                            htmlFor="regulator-month-filter"
-                                            className="text-sm font-semibold text-foreground flex items-center gap-2"
+                                {/* Month Filter */}
+                                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                    <Label
+                                        htmlFor="regulator-month-filter"
+                                        className="text-sm font-semibold text-foreground flex items-center gap-2"
+                                    >
+                                        <Calendar className="size-4 text-purple-600" />
+                                        Month
+                                    </Label>
+                                    <Select
+                                        value={selectedMonth}
+                                        onValueChange={setSelectedMonth}
+                                    >
+                                        <SelectTrigger
+                                            id="regulator-month-filter"
+                                            className="w-full sm:w-[200px] border-input focus:border-ring focus:ring-ring"
                                         >
-                                            <Calendar className="size-4 text-purple-600" />
-                                            Month
-                                        </Label>
-                                        <Select
-                                            value={selectedMonth}
-                                            onValueChange={setSelectedMonth}
-                                        >
-                                            <SelectTrigger
-                                                id="regulator-month-filter"
-                                                className="w-full sm:w-[200px] border-input focus:border-ring focus:ring-ring"
-                                            >
-                                                <SelectValue placeholder="All Months" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
+                                            <SelectValue placeholder="All Months" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">
                         <span className="font-medium">
                             All Months
                         </span>
+                                            </SelectItem>
+                                            {months.map((month) => (
+                                                <SelectItem
+                                                    key={month.value}
+                                                    value={month.value}
+                                                >
+                                                    {month.label}
                                                 </SelectItem>
-                                                {months.map((month) => (
-                                                    <SelectItem
-                                                        key={month.value}
-                                                        value={month.value}
-                                                    >
-                                                        {month.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
+                </div>
 
-                <MonthlySummaryGenerator mode={mode}/>
+                <MonthlySummaryGenerator mode="regulator"/>
 
                 {/* Tabs Section */}
                 <Card className="shadow-lg border-0 bg-card/80 backdrop-blur-sm">
@@ -554,36 +527,11 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             </TabsList>
 
                             {/* Tabs Content */}
-                            {mode === 'operator' ? (
-                                <>
-                                    <TabsContent value="overview" className="mt-0">
-                                        <AnalyticsOverview
-                                            selectedOperator={selectedOperator}
-                                            selectedMonth={selectedMonth}
-                                        />
-                                    </TabsContent>
-
-                                    <TabsContent value="reports" className="mt-0">
-                                        <ReportsTab selectedOperator={selectedOperator} selectedMonth={selectedMonth} />
-                                    </TabsContent>
-
-                                    <TabsContent value="reconciliation" className="mt-0">
-                                        <ReconciliationView/>
-                                    </TabsContent>
-
-                                    <TabsContent value="users" className="mt-0">
-                                        <OperatorUserManagement/>
-                                    </TabsContent>
-                                </>
-                            ) : (
-                                <>
-                                    {regulatorTabs.map(tab => (
-                                        <TabsContent key={tab.value} value={tab.value} className="mt-0">
-                                            <RegulatorTabContent value={tab.value} />
-                                        </TabsContent>
-                                    ))}
-                                </>
-                            )}
+                            {regulatorTabs.map(tab => (
+                                <TabsContent key={tab.value} value={tab.value} className="mt-0">
+                                    <RegulatorTabContent value={tab.value} />
+                                </TabsContent>
+                            ))}
                         </Tabs>
                     </CardContent>
                 </Card>

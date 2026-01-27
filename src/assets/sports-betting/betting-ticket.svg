@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="ticketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#90EE90;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#228B22;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Betting Ticket -->
+  <rect x="10" y="20" width="80" height="60" rx="5" fill="url(#ticketGrad)" stroke="#000000" stroke-width="2" />
+  
+  <!-- Ticket Tear Line -->
+  <line x1="10" y1="50" x2="90" y2="50" stroke="#000000" stroke-width="1" stroke-dasharray="5,5" />
+  
+  <!-- Ticket Header -->
+  <rect x="15" y="25" width="70" height="20" fill="#FFFFFF" opacity="0.8" />
+  <text x="50" y="35" text-anchor="middle" font-size="10" font-weight="bold" fill="#000000">SPORTS BETTING TICKET</text>
+  <text x="50" y="42" text-anchor="middle" font-size="8" fill="#000000">#12345</text>
+  
+  <!-- Bet Details -->
+  <text x="15" y="60" font-size="6" fill="#FFFFFF">Team A vs Team B</text>
+  <text x="15" y="67" font-size="6" fill="#FFFFFF">Over/Under: 2.5</text>
+  <text x="15" y="74" font-size="6" fill="#FFFFFF">Odds: +150</text>
+  
+  <!-- Amount -->
+  <text x="70" y="60" font-size="6" fill="#FFFFFF">Bet: $50</text>
+  <text x="70" y="67" font-size="6" fill="#FFFFFF">To Win: $75</text>
+  
+  <!-- Barcode -->
+  <rect x="15" y="70" width="30" height="8" fill="#000000" />
+  <rect x="17" y="70" width="2" height="8" fill="#FFFFFF" />
+  <rect x="21" y="70" width="1" height="8" fill="#FFFFFF" />
+  <rect x="24" y="70" width="3" height="8" fill="#FFFFFF" />
+  <rect x="29" y="70" width="1" height="8" fill="#FFFFFF" />
+  <rect x="32" y="70" width="2" height="8" fill="#FFFFFF" />
+  <rect x="36" y="70" width="1" height="8" fill="#FFFFFF" />
+  <rect x="39" y="70" width="4" height="8" fill="#FFFFFF" />
+  
+  <!-- PAID Stamp -->
+  <circle cx="75" cy="35" r="8" fill="#FF0000" opacity="0.7" />
+  <text x="75" y="38" text-anchor="middle" font-size="6" font-weight="bold" fill="#FFFFFF">PAID</text>
+</svg>

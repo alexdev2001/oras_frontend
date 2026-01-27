@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { reportsAPI } from '@/utils/API.ts';
+import { reportsAPI, managementAPI } from '@/utils/API.ts';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MonthPicker } from '@/components/ui/month-picker';
@@ -23,7 +23,8 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
     const [regulatorId, setRegulatorId] = useState<number | null>(null);
     const [uploadedBy, setUploadedBy] = useState<number | null>(null);
     const [month, setMonth] = useState('');
-    const [submissionType, setSubmissionType] = useState<'online' | 'offline'>('online');
+    const [operators, setOperators] = useState<any[]>([]);
+    const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
 
     useEffect(() => {
         const token = tokenManager.getToken();
@@ -36,6 +37,22 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
                 console.error("Invalid token", err);
             }
         }
+    }, []);
+
+    useEffect(() => {
+        // Load operators when component mounts
+        const loadOperators = async () => {
+            try {
+                console.log('Loading operators...');
+                const operatorsData = await managementAPI.getOperators();
+                console.log('Operators loaded:', operatorsData);
+                setOperators(operatorsData);
+            } catch (error) {
+                console.error('Failed to load operators:', error);
+            }
+        };
+
+        loadOperators();
     }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,8 +95,8 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
             return;
         }
 
-        if (!month || !selectedFile) {
-            setError("Please select a reporting month and upload a file.");
+        if (!month || !selectedFile || !selectedOperatorId) {
+            setError("Please select a reporting month, operator, and upload a file.");
             return;
         }
 
@@ -90,14 +107,14 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
             await new Promise(resolve => setTimeout(resolve, 1000));
             setUploadStatus("processing");
 
-            const response = await reportsAPI.submitMetrics(month, submissionType, selectedFile);
+            const response = await reportsAPI.submitReport(parseInt(selectedOperatorId), uploadedBy, selectedFile, month);
             
             if (response !== null) {
                 setUploadStatus("success");
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 setMonth('');
-                setSubmissionType('online');
+                setSelectedOperatorId('');
                 setSelectedFile(null);
                 setUploadStatus('idle');
                 setError('');
@@ -187,34 +204,28 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Submission Type *</Label>
-                                <div className="flex gap-6">
-                                    <label className="flex items-center gap-2">
-                                        <input
-                                            type="radio"
-                                            name="submission_type"
-                                            value="online"
-                                            checked={submissionType === 'online'}
-                                            onChange={() => setSubmissionType('online')}
-                                            className="accent-blue-600"
-                                            required
-                                        />
-                                        Online
-                                    </label>
-
-                                    <label className="flex items-center gap-2">
-                                        <input
-                                            type="radio"
-                                            name="submission_type"
-                                            value="offline"
-                                            checked={submissionType === 'offline'}
-                                            onChange={() => setSubmissionType('offline')}
-                                            className="accent-blue-600"
-                                            required
-                                        />
-                                        Offline
-                                    </label>
-                                </div>
+                                <Label htmlFor="operator">Operator *</Label>
+                                <select
+                                    id="operator"
+                                    value={selectedOperatorId}
+                                    onChange={(e) => setSelectedOperatorId(e.target.value)}
+                                    required
+                                    className="w-full p-2 border border-input bg-background text-foreground rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                    <option value="">Select an operator</option>
+                                    {operators.length === 0 ? (
+                                        <option value="" disabled>No operators available</option>
+                                    ) : (
+                                        operators.map((operator) => (
+                                            <option key={operator.operator_id} value={operator.operator_id.toString()}>
+                                                {operator.operator_name}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                                {operators.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">Loading operators...</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -299,7 +310,7 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={isSubmitting || !selectedFile || !month}
+                                    disabled={isSubmitting || !selectedFile || !month || !selectedOperatorId}
                                     className="bg-blue-600 hover:bg-blue-700"
                                 >
                                     {isSubmitting ? (

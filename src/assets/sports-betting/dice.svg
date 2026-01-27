@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="diceGrad">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0E0E0;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- First Die -->
+  <rect x="20" y="30" width="30" height="30" rx="5" fill="url(#diceGrad)" stroke="#000000" stroke-width="2" />
+  <!-- Dots for 6 -->
+  <circle cx="28" cy="38" r="2" fill="#000000" />
+  <circle cx="42" cy="38" r="2" fill="#000000" />
+  <circle cx="28" cy="45" r="2" fill="#000000" />
+  <circle cx="42" cy="45" r="2" fill="#000000" />
+  <circle cx="28" cy="52" r="2" fill="#000000" />
+  <circle cx="42" cy="52" r="2" fill="#000000" />
+  
+  <!-- Second Die -->
+  <rect x="50" y="40" width="30" height="30" rx="5" fill="url(#diceGrad)" stroke="#000000" stroke-width="2" transform="rotate(15 65 55)" />
+  <!-- Dots for 5 -->
+  <circle cx="58" cy="48" r="2" fill="#000000" transform="rotate(15 65 55)" />
+  <circle cx="72" cy="48" r="2" fill="#000000" transform="rotate(15 65 55)" />
+  <circle cx="65" cy="55" r="2" fill="#000000" transform="rotate(15 65 55)" />
+  <circle cx="58" cy="62" r="2" fill="#000000" transform="rotate(15 65 55)" />
+  <circle cx="72" cy="62" r="2" fill="#000000" transform="rotate(15 65 55)" />
+  
+  <!-- Shadow Effect -->
+  <ellipse cx="35" cy="65" rx="15" ry="3" fill="#000000" opacity="0.2" />
+  <ellipse cx="65" cy="75" rx="15" ry="3" fill="#000000" opacity="0.2" />
+</svg>

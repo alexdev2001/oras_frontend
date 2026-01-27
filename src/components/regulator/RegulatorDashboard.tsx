@@ -21,6 +21,7 @@ import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tool
 import {FilePreview} from "@/components/regulator/FilePreview.tsx";
 import {MaglaSubmissionPage} from "@/components/regulator/MaglaSubmissionPage.tsx";
 import {MaglaInstructionsDialog} from "@/components/regulator/MaglaInstructionsDialog.tsx";
+import {RegulatorOperatorsTab} from "@/components/regulator/RegulatorOperatorsTab.tsx";
 import type {Regulator} from "@/types/regulator.ts";
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { MonthPicker } from '@/components/ui/month-picker';
@@ -154,7 +155,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     const [filterType, setFilterType] = useState<'all' | 'online' | 'offline'>('all');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-    const [activeView, setActiveView] = useState<'overview' | 'submissions' | 'analytics' | 'predictions'>('overview');
+    const [activeView, setActiveView] = useState<'overview' | 'submissions' | 'analytics' | 'predictions' | 'operators'>('overview');
 
     const currentRegulator = decoded?.regulator_id && displayUser?.email
         ? [{ regulator_id: decoded.regulator_id, regulator_name: displayUser.email }]
@@ -565,9 +566,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 onSubmitSuccess={() => {
                     if (regulatorId !== null) {
                         loadSubmissions();
-                        loadUniqueOperators(regulatorId);
-                        loadAnalytics(regulatorId);
                     }
+                    setShowMaglaSubmissionForm(false);
+                    setAlertTitle("Success!");
+                    setAlertMessage("Document submitted successfully!");
+                    setShowAlert(true);
                 }}
             />
         );
@@ -615,7 +618,6 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             </p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <ThemeToggle />
                             <Button
                                 onClick={() => {
                                     if (isMaglaRegulator) {
@@ -631,6 +633,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                                 <Plus className="size-4 mr-2" />
                                 Submit Document
                             </Button>
+                            <ThemeToggle />
                             <Button
                                 variant="outline"
                                 onClick={handleSignOut}
@@ -649,6 +652,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             { id: 'submissions', label: 'Submissions', icon: FileText },
                             { id: 'analytics', label: 'Data Analytics', icon: Database },
                             { id: 'predictions', label: 'Predictions', icon: TrendingUp },
+                            ...(isMaglaRegulator ? [{ id: 'operators', label: 'Operators', icon: Building2 }] : [])
                         ].map((tab) => (
                             <Button
                                 key={tab.id}
@@ -1136,6 +1140,18 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                             regulatorAnalytics={analytics ? [analytics] : []}
                             decodedRegulatorId={regulatorId}
                         />
+                    </motion.div>
+                )}
+
+                {/* OPERATORS TAB - Only for MAGLA */}
+                {activeView === 'operators' && isMaglaRegulator && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <RegulatorOperatorsTab />
                     </motion.div>
                 )}
             </div>
