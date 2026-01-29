@@ -6,12 +6,12 @@ import {
     FileText,
     CheckCircle,
     Clock,
-    Filter,
     ArrowUpDown,
     Download,
     ChevronDown,
     ChevronRight,
     Search,
+    Building2,
 } from 'lucide-react';
 import {
     Card,
@@ -33,12 +33,30 @@ import {
 import { reportsAPI } from "@/utils/API.ts";
 import { FilePreview } from '@/components/regulator/FilePreview';
 import type { RegulatorSubmission } from '@/components/regulator/RegulatorDashboard';
+import * as XLSX from 'xlsx';
 
 interface Props {
     submissions: RegulatorSubmission[];
     selectedRegulator?: string;
     selectedMonth?: string;
     regulators?: { regulator_id: number; regulator_name: string }[];
+    maglaOperators?: { operator_id: number; operator_name: string; email: string; is_active: boolean }[];
+    maglaMetrics?: {
+        report_id: number;
+        created_at: string;
+    }[];
+    maglaReports?: {
+        report_id: number;
+        date_time: string;
+        uploaded_by: number;
+        uploaded_by_name: string;
+        operator_id: number;
+        operator_name: string;
+        status: string;
+        report_file: { file_id: number; filename: string };
+    }[];
+    maglaFileBuffers?: { operator_id: number; filename: string; file_buffer: string }[];
+    isMaglaDataLoading?: boolean;
 }
 
 export function AdminRegulatorSubmissions({
@@ -46,14 +64,34 @@ export function AdminRegulatorSubmissions({
                                               selectedRegulator = "all",
                                               selectedMonth = "all",
                                               regulators = [],
+                                              maglaOperators = [],
+                                              maglaMetrics = [],
+                                              maglaReports = [],
+                                              maglaFileBuffers = [],
+                                              isMaglaDataLoading = false,
                                           }: Props) {
-    const [filterType, setFilterType] =
-        useState<'all' | 'online' | 'offline'>('all');
     const [sortOrder, setSortOrder] =
         useState<'newest' | 'oldest'>('newest');
     const [openRegulators, setOpenRegulators] =
         useState<Record<string, boolean>>({});
     const [regulatorSearch, setRegulatorSearch] = useState<string>("");
+
+    const [selectedMaglaReport, setSelectedMaglaReport] = useState<{
+        report_id: number;
+        date_time: string;
+        uploaded_by: number;
+        uploaded_by_name: string;
+        operator_id: number;
+        operator_name: string;
+        status: string;
+        report_file: { file_id: number; filename: string };
+    } | null>(null);
+    const [selectedMaglaBuffer, setSelectedMaglaBuffer] = useState<{ operator_id: number; filename: string; file_buffer: string } | null>(null);
+    const [maglaSheets, setMaglaSheets] = useState<string[]>([]);
+    const [maglaCurrentSheetIndex, setMaglaCurrentSheetIndex] = useState(0);
+    const [maglaPreviewRows, setMaglaPreviewRows] = useState<any[][] | null>(null);
+    const [maglaPreviewError, setMaglaPreviewError] = useState<string | null>(null);
+    const [maglaOpen, setMaglaOpen] = useState(true);
 
     // Convert selectedRegulator name to its ID
     const selectedRegulatorId = useMemo(() => {
@@ -61,6 +99,177 @@ export function AdminRegulatorSubmissions({
         const reg = regulators.find(r => r.regulator_name === selectedRegulator);
         return reg ? reg.regulator_id.toString() : null;
     }, [selectedRegulator, regulators]);
+
+    const formatMonthYear = (rawDate: string | null | undefined) => {
+        if (!rawDate) return '';
+        const d = new Date(rawDate);
+        if (Number.isNaN(d.getTime())) return '';
+        return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(d);
+    };
+
+    const formatMaglaCellValue = (value: any, columnHeader: string): string => {
+        if (value === null || value === undefined || value === '') return '';
+
+        const stringValue = String(value).trim();
+        const headerLower = String(columnHeader ?? '').toLowerCase();
+
+        if (headerLower.includes('date')) {
+            const numericValue = parseFloat(stringValue.replace(/[,]/g, ''));
+
+            if (!isNaN(numericValue) && numericValue === 0) {
+                return '';
+            }
+
+            if (!isNaN(numericValue) && numericValue >= 1 && numericValue <= 2958465) {
+                const excelEpoch = new Date(1900, 0, 1);
+                const jsDate = new Date(excelEpoch.getTime() + (numericValue - 2) * 24 * 60 * 60 * 1000);
+                if (!isNaN(jsDate.getTime())) {
+                    return jsDate.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                }
+            }
+            return stringValue;
+        }
+
+        const shouldNotFormat =
+            headerLower.includes('first ticket') ||
+            headerLower.includes('last ticket') ||
+            headerLower.includes('first ticket #') ||
+            headerLower.includes('last ticket #') ||
+            headerLower.includes('count') ||
+            headerLower.includes('# bets') ||
+            headerLower.includes('bets') ||
+            headerLower.includes('bet count') ||
+            headerLower.includes('bet count #') ||
+            headerLower.includes('pending') ||
+            headerLower.includes('unsettled') ||
+            headerLower.includes('cancelled bets') ||
+            headerLower.includes('cancelled') ||
+            headerLower.includes('ggr%') ||
+            headerLower.includes('%');
+
+        if (shouldNotFormat) {
+            return stringValue;
+        }
+
+        const cleanValue = stringValue.replace(/[ ,%]/g, '');
+        const numericValue = parseFloat(cleanValue);
+
+        if (!isNaN(numericValue)) {
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(numericValue);
+        }
+
+        return stringValue;
+    };
+
+    const findMaglaHeaderRowIndex = (data: any[][]) => {
+        for (let i = 0; i < Math.min(data.length, 10); i++) {
+            const row = data[i];
+            if (Array.isArray(row) && row.some(cell => String(cell ?? '').toLowerCase().includes('date'))) {
+                return i;
+            }
+        }
+        return 0;
+    };
+
+    const maglaCreatedAtByReportId = useMemo(() => {
+        const map = new Map<number, string>();
+        maglaMetrics.forEach(m => {
+            if (m?.report_id && m?.created_at) map.set(m.report_id, m.created_at);
+        });
+        return map;
+    }, [maglaMetrics]);
+
+    const filesByOperator = useMemo(() => {
+        const filteredReports = selectedMonth === 'all'
+            ? maglaReports
+            : maglaReports.filter(r => {
+                const createdAt = maglaCreatedAtByReportId.get(r.report_id);
+                const monthYear = (createdAt || '').substring(0, 7);
+                return monthYear === selectedMonth;
+            });
+
+        return filteredReports.reduce((acc: Record<number, typeof maglaReports>, report) => {
+            if (!acc[report.operator_id]) acc[report.operator_id] = [];
+            acc[report.operator_id].push(report);
+            return acc;
+        }, {} as Record<number, typeof maglaReports>);
+    }, [maglaReports, maglaCreatedAtByReportId, selectedMonth]);
+
+    const selectMaglaFile = (report: (typeof maglaReports)[number]) => {
+        setSelectedMaglaReport(report);
+        setMaglaPreviewError(null);
+
+        const exact = maglaFileBuffers.find(b => b.filename === report.report_file.filename);
+        const byOperator = maglaFileBuffers.find(b => b.operator_id === report.operator_id);
+        const buffer = exact ?? byOperator ?? null;
+        setSelectedMaglaBuffer(buffer);
+
+        if (!buffer) {
+            setMaglaSheets([]);
+            setMaglaPreviewRows(null);
+            setMaglaPreviewError('File buffer not found for this report.');
+            return;
+        }
+
+        try {
+            if (!/^[0-9a-fA-F]*$/.test(buffer.file_buffer) || buffer.file_buffer.length % 2 !== 0) {
+                setMaglaSheets([]);
+                setMaglaPreviewRows(null);
+                setMaglaPreviewError('The selected file is not in the expected format.');
+                return;
+            }
+
+            const bytes = new Uint8Array(buffer.file_buffer.length / 2);
+            for (let i = 0; i < buffer.file_buffer.length; i += 2) {
+                bytes[i / 2] = parseInt(buffer.file_buffer.substr(i, 2), 16);
+            }
+
+            const workbook = XLSX.read(bytes, { type: 'array' });
+            const sheetNames = workbook.SheetNames;
+            setMaglaSheets(sheetNames);
+            const firstSheet = sheetNames[0];
+            setMaglaCurrentSheetIndex(0);
+            if (!firstSheet) {
+                setMaglaPreviewRows(null);
+                return;
+            }
+
+            const worksheet = workbook.Sheets[firstSheet];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            setMaglaPreviewRows(jsonData);
+        } catch (e) {
+            setMaglaSheets([]);
+            setMaglaPreviewRows(null);
+            setMaglaPreviewError('Unable to preview this file.');
+        }
+    };
+
+    const changeMaglaSheet = (sheetIndex: number) => {
+        if (!selectedMaglaBuffer) return;
+        try {
+            if (!/^[0-9a-fA-F]*$/.test(selectedMaglaBuffer.file_buffer) || selectedMaglaBuffer.file_buffer.length % 2 !== 0) return;
+            const bytes = new Uint8Array(selectedMaglaBuffer.file_buffer.length / 2);
+            for (let i = 0; i < selectedMaglaBuffer.file_buffer.length; i += 2) {
+                bytes[i / 2] = parseInt(selectedMaglaBuffer.file_buffer.substr(i, 2), 16);
+            }
+            const workbook = XLSX.read(bytes, { type: 'array' });
+            const sheetName = workbook.SheetNames[sheetIndex];
+            if (!sheetName) return;
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            setMaglaCurrentSheetIndex(sheetIndex);
+            setMaglaPreviewRows(jsonData);
+        } catch {
+            setMaglaPreviewError('Unable to preview this sheet.');
+        }
+    };
 
     /* -------------------- FILTERED SUBMISSIONS -------------------- */
     const filteredSubmissions = useMemo(() => {
@@ -78,10 +287,6 @@ export function AdminRegulatorSubmissions({
         });
     }, [submissions, selectedRegulatorId, selectedMonth, regulatorSearch]);
 
-    /* -------------------- STATS -------------------- */
-    const totalOnline = filteredSubmissions.filter(s => s.status === 'online').length;
-    const totalOffline = filteredSubmissions.filter(s => s.status === 'offline').length;
-
     /* -------------------- GROUP BY REGULATOR -------------------- */
     const grouped = useMemo(() => {
         return filteredSubmissions.reduce<Record<string, RegulatorSubmission[]>>(
@@ -97,10 +302,6 @@ export function AdminRegulatorSubmissions({
     /* -------------------- FILTER + SORT -------------------- */
     const processSubmissions = (list: RegulatorSubmission[]) => {
         let data = [...list];
-
-        if (filterType !== 'all') {
-            data = data.filter(s => s.status === filterType);
-        }
 
         data.sort((a, b) => {
             const da = new Date(a.submittedAt).getTime();
@@ -150,103 +351,226 @@ export function AdminRegulatorSubmissions({
             transition={{ duration: 0.3 }}
         >
             {/* ---------- Regulator Search ---------- */}
-            <div className="relative max-w-md mb-6">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
-                <Input
-                    placeholder="Search by regulator..."
-                    value={regulatorSearch}
-                    onChange={(e) => setRegulatorSearch(e.target.value)}
-                    className="pl-10"
-                />
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-6">
+                <div className="relative w-full max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-4" />
+                    <Input
+                        placeholder="Search by regulator..."
+                        value={regulatorSearch}
+                        onChange={(e) => setRegulatorSearch(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+
+                <div className="flex gap-3">
+                    <Select
+                        value={sortOrder}
+                        onValueChange={v => setSortOrder(v as any)}
+                    >
+                        <SelectTrigger className="w-[140px]">
+                            <ArrowUpDown className="size-4 mr-2" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="newest">Newest</SelectItem>
+                            <SelectItem value="oldest">Oldest</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
-            {/* ---------- STATS ---------- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {[
-                    {
-                        label: 'Total Submissions',
-                        value: filteredSubmissions.length,
-                        color: 'from-indigo-500 to-blue-500',
-                        icon: FileText,
-                    },
-                    {
-                        label: 'Online',
-                        value: totalOnline,
-                        color: 'from-green-500 to-emerald-500',
-                        icon: CheckCircle,
-                    },
-                    {
-                        label: 'Offline',
-                        value: totalOffline,
-                        color: 'from-amber-500 to-orange-500',
-                        icon: Clock,
-                    },
-                ].map(stat => (
-                    <Card key={stat.label} className="overflow-hidden border-0 shadow-md">
-                        <div className={`h-1.5 bg-gradient-to-r ${stat.color}`} />
-                        <CardContent className="pt-4 pb-5">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs uppercase tracking-wide text-gray-500">
-                                        {stat.label}
-                                    </p>
-                                    <p className="text-3xl font-semibold mt-1">
-                                        {stat.value}
-                                    </p>
-                                </div>
-                                <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border">
-                                    <stat.icon className="size-5 text-slate-500" />
+            {/* ---------- MAGLA FILE VIEWER ---------- */}
+            <Card className="mb-6">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <button
+                            onClick={() => setMaglaOpen(p => !p)}
+                            className="flex items-center gap-2"
+                        >
+                            {maglaOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                            <CardTitle>MAGLA Submissions</CardTitle>
+                            <Badge variant="secondary">{maglaReports.length}</Badge>
+                        </button>
+                    </div>
+                    <CardDescription>Files grouped by operator with preview</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {!maglaOpen ? null : isMaglaDataLoading ? (
+                        <div className="text-center py-8 text-gray-500">Loading MAGLA files...</div>
+                    ) : maglaReports.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">No MAGLA files available.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4">Files by Operator</h3>
+                                <div className="space-y-4">
+                                    {Object.entries(filesByOperator).map(([operatorId, files]) => {
+                                        const operator = maglaOperators.find(op => op.operator_id === Number(operatorId));
+                                        return (
+                                            <div key={operatorId} className="border border-border rounded-lg p-4 bg-card">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Building2 className="size-4 text-indigo-600" />
+                                                        <h4 className="font-medium text-foreground">
+                                                            {operator?.operator_name || `Operator ${operatorId}`}
+                                                        </h4>
+                                                    </div>
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {files.length} {files.length === 1 ? 'file' : 'files'}
+                                                    </Badge>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {files.map((report) => (
+                                                        <div
+                                                            key={report.report_file.file_id}
+                                                            className={`p-3 rounded border cursor-pointer transition-colors ${
+                                                                selectedMaglaReport?.report_file.file_id === report.report_file.file_id
+                                                                    ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800'
+                                                                    : 'hover:bg-muted/50 border-border'
+                                                            }`}
+                                                            onClick={() => selectMaglaFile(report)}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <FileText className="size-4 text-muted-foreground" />
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-sm font-medium text-foreground">{report.report_file.filename}</span>
+                                                                        <span className="text-xs text-muted-foreground">{formatMonthYear(maglaCreatedAtByReportId.get(report.report_id) ?? report.date_time)}</span>
+                                                                    </div>
+                                                                </div>
+                                                                {selectedMaglaReport?.report_file.file_id === report.report_file.file_id && (
+                                                                    <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4">File Preview</h3>
+                                {selectedMaglaReport ? (
+                                    <div className="border rounded-lg p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <h4 className="font-medium">{selectedMaglaReport.report_file.filename}</h4>
+                                                <div className="text-sm text-muted-foreground mb-3">
+                                                    {formatMonthYear(maglaCreatedAtByReportId.get(selectedMaglaReport.report_id) ?? selectedMaglaReport.date_time)}
+                                                </div>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => downloadFile(selectedMaglaReport.report_id, selectedMaglaReport.report_file.filename)}
+                                            >
+                                                <Download className="size-4 mr-2" />
+                                                Download
+                                            </Button>
+                                        </div>
+
+                                        {maglaPreviewError ? (
+                                            <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded">
+                                                {maglaPreviewError}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {maglaSheets.length > 1 && (
+                                                    <div className="flex gap-2 overflow-x-auto mb-3">
+                                                        {maglaSheets.map((name, idx) => (
+                                                            <Button
+                                                                key={name}
+                                                                size="sm"
+                                                                variant={maglaCurrentSheetIndex === idx ? 'default' : 'outline'}
+                                                                onClick={() => changeMaglaSheet(idx)}
+                                                            >
+                                                                {name}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {maglaPreviewRows && maglaPreviewRows.length > 0 ? (
+                                                    <div className="border rounded-lg overflow-auto max-h-[320px] bg-white dark:bg-slate-800">
+                                                        <table className="min-w-full text-sm border-collapse">
+                                                            {(() => {
+                                                                const headerRowIndex = findMaglaHeaderRowIndex(maglaPreviewRows);
+                                                                const headerRow = (maglaPreviewRows[headerRowIndex] ?? []) as any[];
+                                                                const maxColumns = Math.max(
+                                                                    ...maglaPreviewRows.map(r => (Array.isArray(r) ? r.length : 0))
+                                                                );
+                                                                const columnsToShow = maxColumns;
+                                                                const headers = Array.from({ length: maxColumns }).map((_, idx) => String((headerRow as any[])[idx] ?? ''));
+                                                                const allRows = maglaPreviewRows.slice(headerRowIndex + 1);
+                                                                const maxRowsToShow = Math.min(allRows.length, 100);
+                                                                const rows = allRows.slice(0, maxRowsToShow);
+
+                                                                return (
+                                                                    <>
+                                                                        <thead>
+                                                                        <tr className="border-b last:border-0 bg-muted/50">
+                                                                            {Array.from({ length: columnsToShow }).map((_, j) => (
+                                                                                <th
+                                                                                    key={j}
+                                                                                    className="px-3 py-2 border-r last:border-r-0 whitespace-nowrap text-left font-medium text-gray-700 dark:text-gray-200"
+                                                                                >
+                                                                                    {headerRow[j] === null || headerRow[j] === undefined ? '' : String(headerRow[j])}
+                                                                                </th>
+                                                                            ))}
+                                                                        </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                        {rows.map((row, i) => (
+                                                                            <tr key={i} className="border-b last:border-0">
+                                                                                {Array.from({ length: columnsToShow }).map((_, j) => (
+                                                                                    <td
+                                                                                        key={j}
+                                                                                        className="px-3 py-2 border-r last:border-r-0 whitespace-nowrap text-gray-700 dark:text-gray-200"
+                                                                                    >
+                                                                                        {formatMaglaCellValue(Array.isArray(row) ? row[j] : '', headers[j] ?? '')}
+                                                                                    </td>
+                                                                                ))}
+                                                                            </tr>
+                                                                        ))}
+                                                                        </tbody>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </table>
+                                                        {(() => {
+                                                            const headerRowIndex = findMaglaHeaderRowIndex(maglaPreviewRows);
+                                                            const allRows = maglaPreviewRows.slice(headerRowIndex + 1);
+                                                            const maxRowsToShow = Math.min(allRows.length, 100);
+                                                            return allRows.length > maxRowsToShow ? (
+                                                                <div className="text-center py-2 text-xs text-muted-foreground border-t bg-muted/30">
+                                                                    Showing first {maxRowsToShow} of {allRows.length} rows
+                                                                </div>
+                                                            ) : null;
+                                                        })()}
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-6 text-center text-gray-500">No previewable data</div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="border border-border rounded-lg p-8 text-center text-muted-foreground">
+                                        <FileText className="size-12 mx-auto mb-4 text-muted-foreground" />
+                                        <p>Select a file to preview</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* ---------- LIST ---------- */}
             <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Regulator Submissions</CardTitle>
-                            <CardDescription>
-                                Submissions grouped by regulator
-                            </CardDescription>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <Select
-                                value={filterType}
-                                onValueChange={v => setFilterType(v as any)}
-                            >
-                                <SelectTrigger className="w-[140px]">
-                                    <Filter className="size-4 mr-2" />
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All</SelectItem>
-                                    <SelectItem value="online">Online</SelectItem>
-                                    <SelectItem value="offline">Offline</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <Select
-                                value={sortOrder}
-                                onValueChange={v => setSortOrder(v as any)}
-                            >
-                                <SelectTrigger className="w-[140px]">
-                                    <ArrowUpDown className="size-4 mr-2" />
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="newest">Newest</SelectItem>
-                                    <SelectItem value="oldest">Oldest</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                </CardHeader>
-
                 <CardContent>
                     {Object.keys(grouped).length === 0 ? (
                         <div className="text-center py-12">
@@ -265,7 +589,7 @@ export function AdminRegulatorSubmissions({
                         const open = openRegulators[regulator] ?? true;
 
                         return (
-                            <div key={regulator} className="mb-6">
+                            <div key={regulator} className="mb-10">
                                 <button
                                     onClick={() =>
                                         setOpenRegulators(p => ({

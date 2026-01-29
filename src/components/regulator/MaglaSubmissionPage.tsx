@@ -43,9 +43,7 @@ export function MaglaSubmissionPage({ onCancel, onSubmitSuccess }: MaglaSubmissi
         // Load operators when component mounts
         const loadOperators = async () => {
             try {
-                console.log('Loading operators...');
                 const operatorsData = await managementAPI.getOperators();
-                console.log('Operators loaded:', operatorsData);
                 setOperators(operatorsData);
             } catch (error) {
                 console.error('Failed to load operators:', error);

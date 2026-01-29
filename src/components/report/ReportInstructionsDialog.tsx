@@ -201,12 +201,12 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
 
                     <div className="grid grid-cols-3 gap-3">
                         {[
-                            { name: 'Sports Betting', icon: '📊', color: 'bg-blue-500' },
-                            { name: 'Casino', icon: '🎰', color: 'bg-purple-500' },
-                            { name: 'Crash Games', icon: '🎮', color: 'bg-orange-500' },
-                            { name: 'Live Casino', icon: '🎲', color: 'bg-red-500' },
-                            { name: 'Poker', icon: '🃏', color: 'bg-green-500' },
-                            { name: 'Virtual Sports', icon: '🎯', color: 'bg-indigo-500' }
+                            { name: 'Sports Betting', icon: 'SB', color: 'bg-blue-500' },
+                            { name: 'Casino', icon: 'CS', color: 'bg-purple-500' },
+                            { name: 'Crash Games', icon: 'CG', color: 'bg-orange-500' },
+                            { name: 'Live Casino', icon: 'LC', color: 'bg-red-500' },
+                            { name: 'Poker', icon: 'PK', color: 'bg-green-500' },
+                            { name: 'Virtual Sports', icon: 'VS', color: 'bg-indigo-500' }
                         ].map((game, index) => (
                             <div
                                 key={game.name}
@@ -216,7 +216,7 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
                                 }}
                             >
                                 <Card className="p-3 text-center hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-indigo-400">
-                                    <div className="text-3xl mb-2">{game.icon}</div>
+                                    <div className="text-2xl font-bold mb-2 text-gray-600">{game.icon}</div>
                                     <p className="text-xs font-medium text-gray-700">{game.name}</p>
                                     <div className={`absolute bottom-0 left-0 right-0 h-1 ${game.color}`}></div>
                                 </Card>
@@ -226,7 +226,7 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
 
                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-sm">
                         <p className="text-yellow-800">
-                            💡 <strong>Example:</strong> "Sports_Betting_Daily", "Casino_Daily", etc.
+                            <span className="text-yellow-600 font-bold">Tip:</span> <strong>Example:</strong> "Sports_Betting_Daily", "Casino_Daily", etc.
                         </p>
                     </div>
 
@@ -298,9 +298,9 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
                                 <h4 className="font-semibold text-purple-900 text-sm">Gaming Products</h4>
                             </div>
                             <ul className="text-xs text-purple-700 space-y-1">
-                                <li>✓ Monthly totals by game type</li>
-                                <li>✓ Bet count, stake, winnings</li>
-                                <li>✓ Calculated levies</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Monthly totals by game type</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Bet count, stake, winnings</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Calculated levies</li>
                             </ul>
                         </Card>
 
@@ -310,9 +310,9 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
                                 <h4 className="font-semibold text-indigo-900 text-sm">Balances & Payouts</h4>
                             </div>
                             <ul className="text-xs text-indigo-700 space-y-1">
-                                <li>✓ Opening/closing balances</li>
-                                <li>✓ Total deposits/withdrawals</li>
-                                <li>✓ Net position</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Opening/closing balances</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Total deposits/withdrawals</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Net position</li>
                             </ul>
                         </Card>
                     </div>
@@ -328,11 +328,11 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
 
                     <div className="space-y-2">
                         {[
-                            { label: 'Excel file (.xlsx or .xls)', icon: '📊', color: 'green' },
-                            { label: 'Daily sheets for each game type', icon: '📅', color: 'blue' },
-                            { label: 'All required columns present', icon: '✅', color: 'purple' },
-                            { label: 'Master data sheets included', icon: '📁', color: 'indigo' },
-                            { label: 'Data complete for the month', icon: '📈', color: 'orange' }
+                            { label: 'Excel file (.xlsx or .xls)', icon: 'XL', color: 'green' },
+                            { label: 'Daily sheets for each game type', icon: 'DL', color: 'blue' },
+                            { label: 'All required columns present', icon: 'OK', color: 'purple' },
+                            { label: 'Master data sheets included', icon: 'MD', color: 'indigo' },
+                            { label: 'Data complete for the month', icon: 'DC', color: 'orange' }
                         ].map((item, index) => (
                             <div
                                 key={item.label}
@@ -341,7 +341,7 @@ export function ReportInstructionsDialog({ open, onOpenChange }: ReportInstructi
                                     animation: `checkIn 0.4s ease-out ${index * 0.1}s both`
                                 }}
                             >
-                                <div className="text-2xl">{item.icon}</div>
+                                <div className="text-xl font-bold text-gray-600">{item.icon}</div>
                                 <span className={`text-sm font-medium text-${item.color}-900`}>{item.label}</span>
                                 <CheckCircle className={`size-5 text-${item.color}-600 ml-auto`} />
                             </div>

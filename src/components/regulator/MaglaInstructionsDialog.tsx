@@ -20,7 +20,7 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
             content: (
                 <div className="space-y-4 text-center">
                     <p className="text-lg">
-                        Submit your regulatory documents to Magla Gaming Authority
+                        Submit your regulatory documents to the system
                     </p>
                     <div className="relative mx-auto w-64 h-48 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -51,7 +51,7 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
                     <div className="grid grid-cols-1 gap-4">
                         <div className="relative overflow-hidden">
                             <Card className="p-4 text-center hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-green-400">
-                                <div className="text-3xl mb-2">📊</div>
+                                <div className="text-3xl mb-2 font-bold text-blue-600">XL</div>
                                 <p className="text-sm font-medium text-gray-700 mb-1">Excel Files Only</p>
                                 <p className="text-xs text-gray-500">(.xlsx, .xls) - Required for data parsing</p>
                                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-500"></div>
@@ -61,7 +61,7 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
 
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-3 text-sm">
                         <p className="text-blue-800">
-                            💡 <strong>Important:</strong> Only Excel files are accepted because the system automatically parses data from specific sheets and columns
+                            <span className="text-blue-600 font-bold">Tip:</span> <strong>Important:</strong> Only Excel files are accepted because the system automatically parses data from specific sheets and columns
                         </p>
                     </div>
                 </div>
@@ -344,10 +344,10 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
                             </div>
                             
                             <div className="mt-3 space-y-1">
-                                <p className="text-xs text-purple-700">✓ Sport betting sheet with green header format</p>
-                                <p className="text-xs text-purple-700">✓ All 22 columns required exactly as shown</p>
-                                <p className="text-xs text-purple-700">✓ Game types: Sports Betting, SOLIDOON, COLOR & FIND, LUSSO, INSTANT Games, ZONGO, Crash Games, Play and Pay</p>
-                                <p className="text-xs text-purple-700">✓ Total row with dark blue background</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> Sport betting sheet with green header format</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> All 22 columns required exactly as shown</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> Game types: Sports Betting, SOLIDOON, COLOR & FIND, LUSSO, INSTANT Games, ZONGO, Crash Games, Play and Pay</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> Total row with dark blue background</p>
                             </div>
                         </Card>
 
@@ -493,8 +493,8 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
                             </div>
                             
                             <div className="mt-3 space-y-1">
-                                <p className="text-xs text-green-700">✓ All 22 columns required, green header format</p>
-                                <p className="text-xs text-green-700">✓ Game types with totals row (dark blue)</p>
+                                <p className="text-xs text-green-700"><span className="text-green-600 font-bold">OK</span> All 22 columns required, green header format</p>
+                                <p className="text-xs text-green-700"><span className="text-green-600 font-bold">OK</span> Game types with totals row (dark blue)</p>
                             </div>
                         </Card>
 
@@ -750,17 +750,17 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
                             </div>
                             
                             <div className="mt-3 space-y-1">
-                                <p className="text-xs text-purple-700">✓ Sport betting sheet with green header format</p>
-                                <p className="text-xs text-purple-700">✓ All 22 columns required exactly as shown</p>
-                                <p className="text-xs text-purple-700">✓ Game types: Sports Betting, SOLIDOON, COLOR & FIND, LUSSO, INSTANT Games, ZONGO, Crash Games, Play and Pay</p>
-                                <p className="text-xs text-purple-700">✓ Total row with dark blue background</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> Sport betting sheet with green header format</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> All 22 columns required exactly as shown</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> Game types: Sports Betting, SOLIDOON, COLOR & FIND, LUSSO, INSTANT Games, ZONGO, Crash Games, Play and Pay</p>
+                                <p className="text-xs text-purple-700"><span className="text-green-600 font-bold">OK</span> Total row with dark blue background</p>
                             </div>
                         </Card>
                     </div>
 
                     <div className="bg-orange-50 border-l-4 border-orange-400 p-3 text-sm">
                         <p className="text-orange-800">
-                            ⚠️ <strong>Important:</strong> Column names must match exactly. The system parses data automatically.
+                            <span className="text-orange-600 font-bold">!</span> <strong>Important:</strong> Column names must match exactly. The system parses data automatically.
                         </p>
                     </div>
                 </div>
@@ -921,44 +921,31 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
                         Documents must meet Magla Gaming Authority standards
                     </p>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <Card className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                    <div className="flex justify-center">
+                        <Card className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 max-w-sm">
                             <div className="flex items-center gap-2 mb-2">
                                 <Database className="size-5 text-blue-600" />
                                 <h4 className="font-semibold text-blue-900 text-sm">Data Requirements</h4>
                             </div>
                             <ul className="text-xs text-blue-700 space-y-1">
-                                <li>✓ Complete monthly coverage</li>
-                                <li>✓ All gaming products included</li>
-                                <li>✓ Accurate financial calculations</li>
-                                <li>✓ Regulatory compliance fields</li>
-                            </ul>
-                        </Card>
-
-                        <Card className="p-3 bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Shield className="size-5 text-red-600" />
-                                <h4 className="font-semibold text-red-900 text-sm">Security Standards</h4>
-                            </div>
-                            <ul className="text-xs text-red-700 space-y-1">
-                                <li>✓ Encrypted submissions</li>
-                                <li>✓ Digital signatures</li>
-                                <li>✓ Audit trail maintained</li>
-                                <li>✓ Data integrity verified</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Complete monthly coverage</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> All gaming products included</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Accurate financial calculations</li>
+                                <li className="flex items-center gap-2"><span className="text-green-600 font-bold">OK</span> Regulatory compliance fields</li>
                             </ul>
                         </Card>
                     </div>
 
                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-sm">
                         <p className="text-yellow-800">
-                            ⚠️ <strong>Important:</strong> All submissions are automatically validated against Magla standards
+                            <span className="text-orange-600 font-bold">!</span> <strong>Important:</strong> All submissions are automatically validated against Magla standards
                         </p>
                     </div>
                 </div>
             )
         },
         {
-            title: 'Select Reporting Month',
+            title: '1. Select Reporting Month',
             icon: <Calendar className="size-16 text-blue-600 mb-4" />,
             content: (
                 <div className="space-y-4">
@@ -1033,7 +1020,7 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
 
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-3 text-sm">
                         <p className="text-blue-800">
-                            📅 <strong>How to select:</strong> Click the month field in the form to open the calendar picker, then choose your reporting period
+                            <span className="text-blue-600 font-bold">CAL</span> <strong>How to select:</strong> Click the month field in the form to open the calendar picker, then choose your reporting period
                         </p>
                     </div>
 
@@ -1064,7 +1051,7 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
             )
         },
         {
-            title: 'Select Operator',
+            title: '2. Select Operator',
             icon: <Building className="size-16 text-blue-600 mb-4" />,
             content: (
                 <div className="space-y-4">

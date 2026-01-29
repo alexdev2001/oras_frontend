@@ -28,6 +28,52 @@ import {RegulatorPredictionsTab} from "@/components/admin/tabs/predictions/Regul
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Menu, X } from 'lucide-react';
 
+// MAGLA types
+interface MaglaOperator {
+    operator_id: number;
+    operator_name: string;
+    email: string;
+    is_active: boolean;
+}
+
+interface MaglaMetrics {
+    total_bet_count: number;
+    report_id: number;
+    total_winnings: number;
+    det_levy: number;
+    ggr: number;
+    created_at: string;
+    status: string;
+    metric_id: number;
+    total_stake: number;
+    ggr_percentage: number;
+    gaming_tax: number;
+    ngr_post_levy: number;
+    date_time: string;
+}
+
+interface MaglaReport {
+    report_id: number;
+    date_time: string;
+    opening_balances_total: number;
+    closing_balances_total: number;
+    uploaded_by: number;
+    uploaded_by_name: string;
+    operator_id: number;
+    operator_name: string;
+    status: string;
+    report_file: {
+        file_id: number;
+        filename: string;
+    };
+}
+
+interface MaglaFileBuffer {
+    operator_id: number;
+    filename: string;
+    file_buffer: string;
+}
+
 interface AdminDashboardProps {
     onSignOut: () => void;
 }
@@ -64,6 +110,13 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
     const [submissions, setSubmissions] = useState<RegulatorSubmission[]>([]);
     const [regulatorAnalytics, setRegulatorAnalytics] = useState<RegulatorAnalytics[]>([]);
     const [decodedRegulatorId, setDecodedRegulatorId] = useState<number | null>(null);
+    
+    // MAGLA state
+    const [maglaOperators, setMaglaOperators] = useState<MaglaOperator[]>([]);
+    const [maglaMetrics, setMaglaMetrics] = useState<MaglaMetrics[]>([]);
+    const [maglaReports, setMaglaReports] = useState<MaglaReport[]>([]);
+    const [maglaFileBuffers, setMaglaFileBuffers] = useState<MaglaFileBuffer[]>([]);
+    const [isMaglaDataLoading, setIsMaglaDataLoading] = useState(false);
 
     useEffect(() => {
         const token = tokenManager.getToken();
@@ -98,13 +151,13 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
         loadRegulatorMetrics();
         loadSubmissions();
         loadRegulatorAnalytics();
+        loadMaglaData();
     }, []);
 
     const loadRegulators = async () => {
         try {
             const regulatorsData = await managementAPI.getRegulators();
             setRegulators((regulatorsData || []).filter(r => r && r.regulator_id));
-            console.log('regulators loaded', regulatorsData);
         } catch (error) {
             console.error('Failed to load regulators:', error);
         }
@@ -115,7 +168,6 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             const regulatorAnalyticsData = await analyticsAPI.getRegulatorAnalyticsAdmin();
             if (regulatorAnalyticsData) {
                 setRegulatorAnalytics(regulatorAnalyticsData);
-                console.log('regulator analytics:', regulatorAnalyticsData);
             }
         } catch (e) {
             console.error('Failed to load regulator analytics:', e);
@@ -139,6 +191,54 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
             }
         } catch (error) {
             console.error('Failed to load regulator metrics:', error);
+        }
+    };
+
+    const loadMaglaData = async () => {
+        setIsMaglaDataLoading(true);
+        try {
+            // Load operators
+            const operators = await managementAPI.getOperators();
+            setMaglaOperators(operators);
+
+            // Load metrics for each operator
+            const allMetrics: MaglaMetrics[] = [];
+            for (const operator of operators) {
+                try {
+                    const metrics = await reportsAPI.getOperatorMetrics(operator.operator_id);
+                    allMetrics.push(...(metrics as MaglaMetrics[]));
+                } catch (error) {
+                    console.error(`Failed to load metrics for operator ${operator.operator_id}:`, error);
+                }
+            }
+            setMaglaMetrics(allMetrics);
+
+            // Load Magla reports
+            try {
+                const reportsData = await reportsAPI.getMaglaReports();
+                if (reportsData && reportsData.reports) {
+                    setMaglaReports(reportsData.reports);
+                } else if (Array.isArray(reportsData)) {
+                    setMaglaReports(reportsData);
+                } else {
+                    setMaglaReports([]);
+                }
+            } catch (error) {
+                console.error('Failed to load Magla reports:', error);
+                setMaglaReports([]);
+            }
+
+            try {
+                const buffersData = await reportsAPI.getFileBuffers();
+                setMaglaFileBuffers(buffersData as MaglaFileBuffer[]);
+            } catch (error) {
+                console.error('Failed to load Magla file buffers:', error);
+                setMaglaFileBuffers([]);
+            }
+        } catch (error) {
+            console.error('Failed to load Magla data:', error);
+        } finally {
+            setIsMaglaDataLoading(false);
         }
     };
 
@@ -173,6 +273,10 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             analytics={regulatorAnalytics}
                             selectedRegulator={selectedRegulator}
                             selectedMonth={selectedMonth}
+                            maglaOperators={maglaOperators}
+                            maglaMetrics={maglaMetrics}
+                            maglaReports={maglaReports}
+                            isMaglaDataLoading={isMaglaDataLoading}
                         />
                     )}
                     {value === 'metrics' && (
@@ -181,6 +285,9 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             selectedRegulator={selectedRegulator}
                             selectedMonth={selectedMonth}
                             regulators={regulators}
+                            maglaMetrics={maglaMetrics}
+                            maglaReports={maglaReports}
+                            isMaglaDataLoading={isMaglaDataLoading}
                         />
                     )}
                     {value === 'submissions' && (
@@ -189,6 +296,11 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                             selectedRegulator={selectedRegulator}
                             selectedMonth={selectedMonth}
                             regulators={regulators}
+                            maglaOperators={maglaOperators}
+                            maglaMetrics={maglaMetrics}
+                            maglaReports={maglaReports}
+                            maglaFileBuffers={maglaFileBuffers}
+                            isMaglaDataLoading={isMaglaDataLoading}
                         />
                     )}
                     {value === 'predictions' && (

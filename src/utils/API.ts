@@ -405,6 +405,51 @@ export const reportsAPI = {
         }
 
         return response.blob();
+    },
+
+    async getOperatorMetrics(operatorId: number) {
+        const response = await fetch(`${BASE_URL}/api/v1/metrics/operator/${operatorId}`, {
+            method: 'GET',
+            headers: getAuthHeader(),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Fetching operator metrics failed:', error);
+            throw new Error(error.error || 'Failed to fetch operator metrics');
+        }
+
+        return response.json();
+    },
+
+    async getMaglaReports() {
+        const response = await fetch(`${BASE_URL}/api/v1/reports/all`, {
+            method: 'GET',
+            headers: getAuthHeader(),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Fetching Magla reports failed:', error);
+            throw new Error(error.error || 'Failed to fetch Magla reports');
+        }
+
+        return response.json();
+    },
+
+    async getFileBuffers() {
+        const response = await fetch(`${BASE_URL}/api/v1/reports/file-buffers`, {
+            method: 'GET',
+            headers: getAuthHeader(),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Fetching file buffers failed:', error);
+            throw new Error(error.error || 'Failed to fetch file buffers');
+        }
+
+        return response.json();
     }
 };
 

@@ -30,7 +30,7 @@ export function RegulatorPredictionsTab({
     const [predictions, setPredictions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    /** ✅ Dialog is controlled HERE */
+    /** Dialog is controlled HERE */
     const [dialogOpen, setDialogOpen] = useState(true);
 
     const resetPredictions = () => {
@@ -38,7 +38,7 @@ export function RegulatorPredictionsTab({
         setSelectedRegulator(null);
         setPredictions([]);
         setLoading(false);
-        setDialogOpen(true); // ✅ reopen dialog
+        setDialogOpen(true); // reopen dialog
     };
 
     return (

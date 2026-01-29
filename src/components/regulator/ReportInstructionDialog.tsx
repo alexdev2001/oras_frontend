@@ -88,7 +88,7 @@ export function ReportInstructionsDialog({
                                     className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
                                 >
                                     <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3">
-                                        📅 When submitting your report, you'll need to select:
+                                        <span className="text-blue-600 font-bold">CAL</span> When submitting your report, you'll need to select:
                                     </p>
                                     
                                     <motion.div
@@ -113,7 +113,7 @@ export function ReportInstructionsDialog({
                                         className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800"
                                     >
                                         <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
-                                            ⚠️ Important: One month per file only!
+                                            <span className="text-yellow-600 font-bold">!</span> Important: One month per file only!
                                         </p>
                                         <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
                                             Each report file must contain data for a single reporting month
@@ -143,7 +143,7 @@ export function ReportInstructionsDialog({
                                     className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
                                 >
                                     <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-4">
-                                        🎯 Select your report type using radio buttons:
+                                        <span className="text-green-600 font-bold">SEL</span> Select your report type using radio buttons:
                                     </p>
                                     
                                     <div className="space-y-3">
@@ -162,7 +162,7 @@ export function ReportInstructionsDialog({
                                                 <div className="w-2 h-2 rounded-full bg-white" />
                                             </motion.div>
                                             <div className="flex-1">
-                                                <p className="font-semibold text-sm">🌐 Online</p>
+                                                <p className="font-semibold text-sm">WEB Online</p>
                                                 <p className="text-xs text-gray-600 dark:text-gray-400">
                                                     For online betting and gaming activities
                                                 </p>
@@ -177,7 +177,7 @@ export function ReportInstructionsDialog({
                                         >
                                             <div className="w-4 h-4 rounded-full border-2 border-gray-400" />
                                             <div className="flex-1">
-                                                <p className="font-semibold text-sm">🏪 Offline</p>
+                                                <p className="font-semibold text-sm">STR Offline</p>
                                                 <p className="text-xs text-gray-600 dark:text-gray-400">
                                                     For physical betting shops and retail activities
                                                 </p>

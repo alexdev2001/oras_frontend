@@ -564,9 +564,7 @@ export function OperatorUserManagement() {
                                             <td className="py-3 px-4">
                                                 <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                                                     <Shield className="size-3" />
-                                                    {typeof user.roles?.[0] === 'string'
-                                                        ? user.roles[0]
-                                                        : 'admin'}
+                                                    {typeof user.roles?.[0] === 'string' ? user.roles[0] : (user.roles?.[0] as any)?.name || 'admin'}
                                                 </Badge>
                                             </td>
                                             <td className="py-3 px-4">
@@ -822,7 +820,6 @@ export function OperatorUserManagement() {
                                     ? String(userForm.regulator_id)
                                     : 'none'}
                                 onValueChange={handleRegulatorChange}
-                                disabled={userForm.roles[0] === 'admin'}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select regulator..." />
@@ -854,6 +851,7 @@ export function OperatorUserManagement() {
                                         regulator_id: value === 'admin' ? null : prev.regulator_id,
                                     }))
                                 }
+                                disabled={userForm.regulator_id !== null}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
@@ -861,10 +859,15 @@ export function OperatorUserManagement() {
                                 <SelectContent>
                                     <SelectItem value="admin">Administrator</SelectItem>
                                     <SelectItem value="regulator" disabled>
-                                        Regulator (auto-assigned)
+                                        Regulator (auto-assigned when regulator is selected)
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
+                            {userForm.regulator_id !== null && (
+                                <p className="text-xs text-muted-foreground">
+                                    Role is automatically set to "Regulator" when a regulator is assigned
+                                </p>
+                            )}
                         </div>
 
                         {/* Actions */}

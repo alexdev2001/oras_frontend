@@ -43,7 +43,7 @@ export function FilePreview({
             try {
                 setLoading(true);
 
-                // ✅ USE API FUNCTION — NOT fetch(fileUrl)
+                // USE API FUNCTION — NOT fetch(fileUrl)
                 const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
 
                 const buffer = await blob.arrayBuffer();

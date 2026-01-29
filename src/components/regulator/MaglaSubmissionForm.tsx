@@ -46,9 +46,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
         // Load operators when component mounts
         const loadOperators = async () => {
             try {
-                console.log('Loading operators...');
                 const operatorsData = await managementAPI.getOperators();
-                console.log('Operators loaded:', operatorsData);
                 setOperators(operatorsData);
             } catch (error) {
                 console.error('Failed to load operators:', error);
@@ -57,11 +55,6 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
 
         loadOperators();
     }, []);
-
-    // Debug operators state
-    useEffect(() => {
-        console.log('Operators state updated:', operators);
-    }, [operators]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -181,7 +174,7 @@ export function MaglaSubmissionForm({ open, onOpenChange, onSubmitSuccess }: Mag
                         Submit Document
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground">
-                        Upload regulatory document for compliance
+                        Submit your regulatory documents to the system
                     </DialogDescription>
                 </DialogHeader>
 

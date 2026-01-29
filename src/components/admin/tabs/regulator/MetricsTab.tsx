@@ -55,6 +55,38 @@ export interface Metric {
     report_type: string;
 }
 
+interface MaglaMetrics {
+    total_bet_count: number;
+    report_id: number;
+    total_winnings: number;
+    det_levy: number;
+    ggr: number;
+    created_at: string;
+    status: string;
+    metric_id: number;
+    total_stake: number;
+    ggr_percentage: number;
+    gaming_tax: number;
+    ngr_post_levy: number;
+    date_time: string;
+}
+
+interface MaglaReport {
+    report_id: number;
+    date_time: string;
+    opening_balances_total: number;
+    closing_balances_total: number;
+    uploaded_by: number;
+    uploaded_by_name: string;
+    operator_id: number;
+    operator_name: string;
+    status: string;
+    report_file: {
+        file_id: number;
+        filename: string;
+    };
+}
+
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#06b6d4"];
 
 const formatMWK = (value: number) =>
@@ -98,15 +130,22 @@ export function MetricsTab({
                                selectedRegulator = "all",
                                selectedMonth = "all",
                                regulators = [],
+                               maglaMetrics = [],
+                               maglaReports = [],
+                               isMaglaDataLoading = false,
                            }: {
     metrics: Metric[];
     selectedRegulator?: string;
     selectedMonth?: string;
     regulators?: { regulator_id: number; regulator_name: string }[];
+    maglaMetrics?: MaglaMetrics[];
+    maglaReports?: MaglaReport[];
+    isMaglaDataLoading?: boolean;
 }) {
     const [regulatorNames, setRegulatorNames] = useState<Record<number, string>>({});
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const [regulatorCollapsed, setRegulatorCollapsed] = useState<Record<number, boolean>>({});
+    const [maglaCollapsed, setMaglaCollapsed] = useState(false);
 
     const selectedRegulatorId = useMemo(() => {
         if (selectedRegulator === "all") return null;
@@ -123,6 +162,43 @@ export function MetricsTab({
             return matchesRegulator && matchesMonth;
         });
     }, [metrics, selectedRegulatorId, selectedMonth]);
+
+    const maglaRows = useMemo(() => {
+        if (!maglaMetrics.length) return [];
+
+        const reportById = new Map<number, MaglaReport>();
+        maglaReports.forEach(r => reportById.set(r.report_id, r));
+
+        return maglaMetrics
+            .map(metric => {
+                const report = reportById.get(metric.report_id);
+                const operatorName = report?.operator_name ?? 'Unknown operator';
+                const month_year = (metric.created_at || metric.date_time || report?.date_time || '').substring(0, 7);
+                const computedGgrPercentage = metric.total_stake > 0 ? metric.ggr / metric.total_stake : 0;
+                return {
+                    operator_name: operatorName,
+                    month_year,
+                    total_stake: metric.total_stake,
+                    ggr: metric.ggr,
+                    ggr_percentage: computedGgrPercentage,
+                    det_levy: metric.det_levy,
+                    gaming_tax: metric.gaming_tax,
+                    total_winnings: metric.total_winnings,
+                };
+            })
+            .filter(r => {
+                if (!r.month_year) return false;
+                return selectedMonth === 'all' || r.month_year === selectedMonth;
+            });
+    }, [maglaMetrics, maglaReports, selectedMonth]);
+
+    const maglaByOperator = useMemo(() => {
+        return maglaRows.reduce((acc, row) => {
+            if (!acc[row.operator_name]) acc[row.operator_name] = [];
+            acc[row.operator_name].push(row);
+            return acc;
+        }, {} as Record<string, typeof maglaRows>);
+    }, [maglaRows]);
 
     const metricsByRegulator = useMemo(() => {
         return filteredMetrics.reduce((acc, m) => {
@@ -146,7 +222,10 @@ export function MetricsTab({
 
 
 
-    if (!metrics || metrics.length === 0) {
+    const hasIgjMetrics = !!metrics?.length;
+    const hasMaglaMetrics = isMaglaDataLoading || maglaRows.length > 0;
+
+    if (!hasIgjMetrics && !hasMaglaMetrics) {
         return (
             <div className="space-y-6">
                 <NoMetricsState />
@@ -157,6 +236,194 @@ export function MetricsTab({
     return (
         <TooltipProvider delayDuration={150}>
             <div className="space-y-12">
+                {/* MAGLA SECTION */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0 }}
+                    className="space-y-8"
+                >
+                    <Card className="border-2 border-indigo-200">
+                        <CardHeader
+                            className="flex flex-row items-center justify-between cursor-pointer"
+                            onClick={() => setMaglaCollapsed(p => !p)}
+                        >
+                            <CardTitle className="text-indigo-700">MAGLA</CardTitle>
+                            {maglaCollapsed ? <ChevronDown /> : <ChevronUp />}
+                        </CardHeader>
+                    </Card>
+
+                    <AnimatePresence initial={false}>
+                        {!maglaCollapsed && (
+                            <>
+                                {isMaglaDataLoading ? (
+                                    <div className="space-y-6">
+                                        <NoMetricsState message="Loading MAGLA metrics…" />
+                                    </div>
+                                ) : maglaRows.length === 0 ? (
+                                    <div className="space-y-6">
+                                        <NoMetricsState message="No MAGLA metrics available." />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-6">
+                                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                                Regulator Overview
+                                            </h3>
+
+                                            {(() => {
+                                                const allRows = maglaRows;
+                                                const totalGgr = allRows.reduce((s, r) => s + r.ggr, 0);
+                                                const totalStake = allRows.reduce((s, r) => s + r.total_stake, 0);
+                                                const operatorTotals = Object.entries(maglaByOperator).map(([name, rows]) => ({
+                                                    operator: name,
+                                                    ggr: rows.reduce((s, r) => s + r.ggr, 0),
+                                                }));
+                                                const topOperators = [...operatorTotals].sort((a, b) => b.ggr - a.ggr).slice(0, 5);
+
+                                                return (
+                                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <Kpi icon={Wallet} label="Total Stake" value={formatMWK(totalStake)} />
+                                                            <Kpi icon={TrendingUp} label="Total GGR" value={formatMWK(totalGgr)} />
+                                                            <Kpi
+                                                                icon={Percent}
+                                                                label="Avg GGR %"
+                                                                value={totalStake > 0 ? `${((totalGgr / totalStake) * 100).toFixed(2)}%` : '0.00%'}
+                                                            />
+                                                            <Kpi icon={Users} label="Operators" value={operatorTotals.length.toString()} />
+                                                        </div>
+
+                                                        <Card>
+                                                            <CardHeader>
+                                                                <CardTitle className="text-sm">Market Share (GGR)</CardTitle>
+                                                            </CardHeader>
+                                                            <CardContent>
+                                                                <ResponsiveContainer width="100%" height={220}>
+                                                                    <PieChart>
+                                                                        <Pie
+                                                                            data={operatorTotals}
+                                                                            dataKey="ggr"
+                                                                            nameKey="operator"
+                                                                            outerRadius={80}
+                                                                        >
+                                                                            {operatorTotals.map((_, i) => (
+                                                                                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                                                                            ))}
+                                                                        </Pie>
+                                                                        <RechartsTooltip formatter={(v: number) => formatMWK(v)} />
+                                                                    </PieChart>
+                                                                </ResponsiveContainer>
+                                                            </CardContent>
+                                                        </Card>
+
+                                                        <Card>
+                                                            <CardHeader>
+                                                                <CardTitle className="text-sm">Top Operators</CardTitle>
+                                                            </CardHeader>
+                                                            <CardContent className="space-y-3">
+                                                                {topOperators.map(o => (
+                                                                    <div key={o.operator}>
+                                                                        <div className="flex justify-between text-xs">
+                                                                            <span className="truncate max-w-[70%]">{o.operator}</span>
+                                                                            <span>{formatMWKShort(o.ggr)}</span>
+                                                                        </div>
+                                                                        <div className="h-2 bg-gray-200 rounded">
+                                                                            <div
+                                                                                className="h-2 bg-indigo-500 rounded"
+                                                                                style={{ width: `${topOperators[0].ggr > 0 ? (o.ggr / topOperators[0].ggr) * 100 : 0}%` }}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </CardContent>
+                                                        </Card>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+
+                                        <div className="border-t pt-6">
+                                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                                Operator Breakdown
+                                            </h3>
+                                        </div>
+
+                                        {Object.entries(maglaByOperator).map(([operator, rows]) => {
+                                            const collapseKey = `magla-${operator}`;
+                                            const sorted = [...rows].sort((a, b) => a.month_year.localeCompare(b.month_year));
+
+                                            const maxY = Math.max(
+                                                ...sorted.map(r => Math.max(r.total_stake, r.ggr))
+                                            );
+
+                                            return (
+                                                <Card key={collapseKey}>
+                                                    <CardHeader className="flex justify-between items-center">
+                                                        <CardTitle className="text-base">{operator}</CardTitle>
+                                                        <button
+                                                            onClick={() =>
+                                                                setCollapsed(p => ({
+                                                                    ...p,
+                                                                    [collapseKey]: !p[collapseKey],
+                                                                }))
+                                                            }
+                                                        >
+                                                            {collapsed[collapseKey] ? <ChevronDown /> : <ChevronUp />}
+                                                        </button>
+                                                    </CardHeader>
+
+                                                    {!collapsed[collapseKey] && (
+                                                        <CardContent className="space-y-4">
+                                                            <ResponsiveContainer width="100%" height={200}>
+                                                                <LineChart data={sorted}>
+                                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                                    <XAxis dataKey="month_year" />
+                                                                    <YAxis tickFormatter={formatMWKShort} domain={[0, maxY * 1.1]} />
+                                                                    <RechartsTooltip formatter={(v: number) => formatMWK(v)} />
+                                                                    <Line type="monotone" dataKey="ggr" stroke="#3b82f6" strokeWidth={2} />
+                                                                    <Line type="monotone" dataKey="total_stake" stroke="#10b981" strokeWidth={2} />
+                                                                </LineChart>
+                                                            </ResponsiveContainer>
+
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead>Month</TableHead>
+                                                                        <TableHead>Total Stake</TableHead>
+                                                                        <TableHead>Payout</TableHead>
+                                                                        <TableHead>GGR</TableHead>
+                                                                        <TableHead>GGR %</TableHead>
+                                                                        <TableHead>DET Levy</TableHead>
+                                                                        <TableHead>Gaming Tax</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {sorted.map((r, i) => (
+                                                                        <TableRow key={i}>
+                                                                            <TableCell>{r.month_year}</TableCell>
+                                                                            <TableCell>{formatMWK(r.total_stake)}</TableCell>
+                                                                            <TableCell>{formatMWK(r.total_winnings)}</TableCell>
+                                                                            <TableCell>{formatMWK(r.ggr)}</TableCell>
+                                                                            <TableCell>{(r.total_stake > 0 ? (r.ggr / r.total_stake) * 100 : 0).toFixed(2)}%</TableCell>
+                                                                            <TableCell>{formatMWK(r.det_levy)}</TableCell>
+                                                                            <TableCell>{formatMWK(r.gaming_tax)}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </CardContent>
+                                                    )}
+                                                </Card>
+                                            );
+                                        })}
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+
                 {Object.entries(metricsByRegulator).map(([regulatorId, operators], rIdx) => {
                     const allMetrics = Object.values(operators).flat();
 
