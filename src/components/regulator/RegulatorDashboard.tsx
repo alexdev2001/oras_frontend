@@ -410,7 +410,9 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                     const metrics = await reportsAPI.getOperatorMetrics(operator.operator_id);
                     allMetrics.push(...(metrics as MaglaMetrics[]));
                 } catch (error) {
-                    console.error(`Failed to load metrics for operator ${operator.operator_id}:`, error);
+                    // Log the error but continue with other operators
+                    console.warn(`No metrics available for operator ${operator.operator_id} (${operator.operator_name}):`, error);
+                    // Don't throw error, just skip this operator's metrics
                 }
             }
             setMaglaMetrics(allMetrics);
@@ -538,20 +540,41 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
 
     const downloadFile = async (reportId: number, fileName: string) => {
         try {
+            // Show loading state
             const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
+            
+            // Validate blob before proceeding
+            if (!blob || blob.size === 0) {
+                throw new Error('Downloaded file is empty or invalid');
+            }
 
+            // Create object URL and wait for it to be ready
             const url = URL.createObjectURL(blob);
-
+            
+            // Create download link
             const link = document.createElement('a');
             link.href = url;
             link.download = fileName;
+            link.style.display = 'none';
+            
+            // Add to DOM, trigger download, then cleanup
             document.body.appendChild(link);
+            
+            // Use a small delay to ensure the blob is fully processed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             link.click();
-
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            
+            // Cleanup after a longer delay to ensure download starts
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 1000);
+            
         } catch (err) {
             console.error('Failed to download file', err);
+            // Show user-friendly error message
+            alert('Failed to download file. Please try again.');
         }
     };
 
@@ -734,6 +757,36 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
     const operatorNames = maglaOperators.map(op => op.operator_name);
     const duplicateNames = operatorNames.filter((name, index) => operatorNames.indexOf(name) !== index);
 
+    // Debug function to test base64 parsing
+    const debugBase64Parsing = (base64String: string) => {
+        try {
+            console.log('🔍 Debugging base64 parsing...');
+            console.log('Length:', base64String.length);
+            console.log('Sample:', base64String.substring(0, 100));
+            
+            // Check if it's valid base64
+            const isValidBase64 = /^[A-Za-z0-9+/]*={0,2}$/.test(base64String) && 
+                                base64String.length > 0 &&
+                                base64String.length % 4 === 0;
+            
+            console.log('Valid base64:', isValidBase64);
+            
+            if (!isValidBase64) {
+                console.error('❌ Invalid base64 format');
+                return false;
+            }
+            
+            // Try to decode
+            const binaryString = atob(base64String);
+            console.log('✅ Successfully decoded, binary length:', binaryString.length);
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Base64 decoding failed:', error);
+            return false;
+        }
+    };
+
     // Helper function to handle file selection
     const handleFileSelect = async (reportFile: { file_id: number; filename: string }) => {
         const reportForSelection = maglaReports.find(r => r.report_file.file_id === reportFile.file_id) ?? null;
@@ -743,6 +796,9 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         let matchingFileBuffer = reportToBufferMap.get(reportFile.file_id);
         
         if (matchingFileBuffer) {
+            // Debug the base64 parsing
+            debugBase64Parsing(matchingFileBuffer.file_buffer);
+            
             // Verify this is actually the right file
             if (matchingFileBuffer.filename !== reportFile.filename) {
                 
@@ -788,13 +844,13 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         const previousSheetName = sheets[currentSheetIndex];
         
         try {
-            // Check if the buffer looks like valid hex string
-            const isValidHex = /^[0-9a-fA-F]*$/.test(matchingFileBuffer.file_buffer) && 
-                              matchingFileBuffer.file_buffer.length > 0 &&
-                              matchingFileBuffer.file_buffer.length % 2 === 0; // Hex strings should have even length
+            // Check if the buffer looks like valid base64 string
+            const isValidBase64 = /^[A-Za-z0-9+/]*={0,2}$/.test(matchingFileBuffer.file_buffer) && 
+                                matchingFileBuffer.file_buffer.length > 0 &&
+                                matchingFileBuffer.file_buffer.length % 4 === 0; // Base64 strings should have length divisible by 4
             
-            if (!isValidHex) {
-                console.error('File buffer is not valid hex format');
+            if (!isValidBase64) {
+                console.error('File buffer is not valid base64 format');
                 console.error('Buffer sample:', matchingFileBuffer.file_buffer.substring(0, 200));
                 
                 // Set user-friendly error message
@@ -807,10 +863,11 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 return;
             }
             
-            // Convert hex string to Uint8Array
-            const bytes = new Uint8Array(matchingFileBuffer.file_buffer.length / 2);
-            for (let i = 0; i < matchingFileBuffer.file_buffer.length; i += 2) {
-                bytes[i / 2] = parseInt(matchingFileBuffer.file_buffer.substr(i, 2), 16);
+            // Convert base64 string to Uint8Array
+            const binaryString = atob(matchingFileBuffer.file_buffer);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
             
             // Try to parse the Excel file from the binary data
@@ -824,7 +881,7 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                 try {
                     workbook = XLSX.read(bytes.buffer, { type: 'buffer' });
                 } catch (error2) {
-                    throw new Error('Unable to parse Excel file from hex data');
+                    throw new Error('Unable to parse Excel file from base64 data');
                 }
             }
             
@@ -966,26 +1023,46 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
         const handleDownload = async () => {
             if (selectedFile) {
                 try {
-                    // Convert hex back to binary and create blob
-                    const bytes = new Uint8Array(selectedFile.file_buffer.length / 2);
-                    for (let i = 0; i < selectedFile.file_buffer.length; i += 2) {
-                        bytes[i / 2] = parseInt(selectedFile.file_buffer.substr(i, 2), 16);
+                    console.log('🔥 Dashboard download triggered for file:', selectedFile.filename);
+                    
+                    // Use file_id as the report ID for the API
+                    const fileId = selectedFile.file_id;
+                    console.log('📡 Using file_id as reportId:', fileId, '(type:', typeof fileId, ')');
+                    
+                    if (!fileId) {
+                        throw new Error('No valid file_id found in selectedFile');
                     }
                     
-                    const blob = new Blob([bytes], { 
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-                    });
+                    console.log('📡 Calling API downloadReportFile with reportId:', fileId);
                     
+                    // Use the correct API endpoint
+                    const blob = await reportsAPI.downloadReportFile(Number(fileId));
+                    console.log('📦 Received blob:', { size: blob.size, type: blob.type });
+                    
+                    // Validate blob before proceeding
+                    if (!blob || blob.size === 0) {
+                        throw new Error('Downloaded file is empty or invalid');
+                    }
+
                     const url = URL.createObjectURL(blob);
+                    console.log('🔗 Created object URL:', url);
+                    
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = fileName;
+                    link.download = selectedFile.filename;
                     document.body.appendChild(link);
+                    
+                    console.log('⬇️ Triggering download for:', selectedFile.filename);
                     link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        console.log('🧹 Cleaned up download link');
+                    }, 1000);
+                    
                 } catch (error) {
-                    console.error('Download failed:', error);
+                    console.error('❌ Download failed:', error);
                     setAlertTitle("Download Failed");
                     setAlertMessage("Unable to download the file. Please try again.");
                     setShowAlert(true);
@@ -1314,27 +1391,59 @@ export function RegulatorDashboard({ onSignOut }: RegulatorDashboardProps) {
                     )}
 
                     {/* Navigation Tabs */}
-                    <div className="flex gap-2 mt-6">
-                        {[
-                            { id: 'overview', label: 'Overview', icon: BarChart3 },
-                            { id: 'submissions', label: 'Submissions', icon: FileText },
-                            { id: 'analytics', label: 'Data Analytics', icon: Database },
-                            { id: 'predictions', label: 'Predictions', icon: TrendingUp },
-                            ...(isMaglaRegulator ? [{ id: 'operators', label: 'Operators', icon: Building2 }] : [])
-                        ].map((tab) => (
-                            <Button
-                                key={tab.id}
-                                variant={activeView === tab.id ? 'default' : 'ghost'}
-                                onClick={() => setActiveView(tab.id as any)}
-                                className={activeView === tab.id
-                                    ? 'bg-card text-primary hover:bg-card/90'
-                                    : 'text-foreground hover:bg-muted/50'
-                                }
-                            >
-                                <tab.icon className="size-4 mr-2" />
-                                {tab.label}
-                            </Button>
-                        ))}
+                    <div className="mt-6">
+                        {/* Desktop Layout - Full tabs */}
+                        <div className="hidden sm:flex gap-2 flex-wrap">
+                            {[
+                                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                                { id: 'submissions', label: 'Submissions', icon: FileText },
+                                { id: 'analytics', label: 'Data Analytics', icon: Database },
+                                { id: 'predictions', label: 'Predictions', icon: TrendingUp },
+                                ...(isMaglaRegulator ? [{ id: 'operators', label: 'Operators', icon: Building2 }] : [])
+                            ].map((tab) => (
+                                <Button
+                                    key={tab.id}
+                                    variant={activeView === tab.id ? 'default' : 'ghost'}
+                                    onClick={() => setActiveView(tab.id as any)}
+                                    className={activeView === tab.id
+                                        ? 'bg-card text-primary hover:bg-card/90'
+                                        : 'text-foreground hover:bg-muted/50'
+                                    }
+                                >
+                                    <tab.icon className="size-4 mr-2" />
+                                    {tab.label}
+                                </Button>
+                            ))}
+                        </div>
+
+                        {/* Mobile Layout - Scrollable tabs */}
+                        <div className="sm:hidden">
+                            <div className="overflow-x-auto pb-2">
+                                <div className="flex gap-2 min-w-max">
+                                    {[
+                                        { id: 'overview', label: 'Overview', icon: BarChart3 },
+                                        { id: 'submissions', label: 'Submissions', icon: FileText },
+                                        { id: 'analytics', label: 'Analytics', icon: Database },
+                                        { id: 'predictions', label: 'Predictions', icon: TrendingUp },
+                                        ...(isMaglaRegulator ? [{ id: 'operators', label: 'Operators', icon: Building2 }] : [])
+                                    ].map((tab) => (
+                                        <Button
+                                            key={tab.id}
+                                            variant={activeView === tab.id ? 'default' : 'ghost'}
+                                            onClick={() => setActiveView(tab.id as any)}
+                                            className={activeView === tab.id
+                                                ? 'bg-card text-primary hover:bg-card/90'
+                                                : 'text-foreground hover:bg-muted/50'
+                                            }
+                                            size="sm"
+                                        >
+                                            <tab.icon className="size-4 mr-1" />
+                                            {tab.label}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </motion.div>

@@ -392,13 +392,18 @@ export function AdminRegulatorDataTables({
                                         <TabsContent value="summary" className="mt-6 space-y-4">
                                             {/* MAGLA Chart */}
                                             {maglaTrendData.length > 0 && (
-                                                <div className="h-64">
+                                                <div className="h-80 mb-8">
                                                     <h4 className="text-sm font-medium mb-3">Monthly Trend</h4>
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <AreaChart data={maglaTrendData}>
                                                             <CartesianGrid strokeDasharray="3 3" />
                                                             <XAxis dataKey="month" />
-                                                            <YAxis />
+                                                            <YAxis tickFormatter={(value) => {
+                                                                if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+                                                                if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                                                                if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+                                                                return value.toString();
+                                                            }} />
                                                             <Tooltip formatter={(value) => formatCurrency(value as number)} />
                                                             <Area type="monotone" dataKey="total_stake" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
                                                             <Area type="monotone" dataKey="ggr" stackId="2" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />

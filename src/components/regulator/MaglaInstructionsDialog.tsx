@@ -782,7 +782,6 @@ export function MaglaInstructionsDialog({ open, onOpenChange, onGetStarted }: Ma
 
                     <div className="bg-white rounded-lg border-2 border-blue-200 p-6">
                         <div className="mb-4">
-                            <p className="text-sm font-medium text-gray-600 mb-4 text-center">Excel Column Header Animation</p>
                             
                             {/* Excel Table Simulation */}
                             <div className="bg-gray-50 border border-gray-300 rounded overflow-hidden">

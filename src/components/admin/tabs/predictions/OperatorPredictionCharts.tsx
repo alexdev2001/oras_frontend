@@ -36,7 +36,6 @@ const formatMWK = (value: number) =>
     }).format(value);
 
 export function OperatorPredictionCharts({
-                                             regulatorAnalytics,
                                              selectedRegulator,
                                              period,
                                              predictions,
@@ -57,12 +56,26 @@ export function OperatorPredictionCharts({
     useEffect(() => {
         const loadPredictions = async () => {
             setLoading(true);
-            const data = await analyticsAPI.getRegulatorPredictions({
-                regulator: selectedRegulator,
-                months: period,
-            });
-            setPredictions(data);
-            setLoading(false);
+            try {
+                const isMagla = String(selectedRegulator ?? '').toLowerCase().includes('magla');
+
+                const data = isMagla
+                    ? await analyticsAPI.getMaglaPredictions({
+                        operator: 'all',
+                        months: period,
+                    })
+                    : await analyticsAPI.getRegulatorPredictions({
+                        regulator: selectedRegulator,
+                        months: period,
+                    });
+
+                setPredictions(data);
+            } catch (err) {
+                console.error('Failed to load predictions:', err);
+                setPredictions([]);
+            } finally {
+                setLoading(false);
+            }
         };
 
         loadPredictions();

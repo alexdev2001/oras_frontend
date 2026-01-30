@@ -43,7 +43,7 @@ export function FilePreview({
             try {
                 setLoading(true);
 
-                // USE API FUNCTION — NOT fetch(fileUrl)
+                // USE REGULATOR REPORT API FUNCTION for IGJ regulator dashboard
                 const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
 
                 const buffer = await blob.arrayBuffer();

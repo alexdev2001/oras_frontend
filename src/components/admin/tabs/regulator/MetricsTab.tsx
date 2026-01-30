@@ -283,7 +283,7 @@ export function MetricsTab({
 
                                                 return (
                                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                                        <div className="grid grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <Kpi icon={Wallet} label="Total Stake" value={formatMWK(totalStake)} />
                                                             <Kpi icon={TrendingUp} label="Total GGR" value={formatMWK(totalGgr)} />
                                                             <Kpi
@@ -359,8 +359,8 @@ export function MetricsTab({
 
                                             return (
                                                 <Card key={collapseKey}>
-                                                    <CardHeader className="flex justify-between items-center">
-                                                        <CardTitle className="text-base">{operator}</CardTitle>
+                                                    <CardHeader className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+                                                        <CardTitle className="text-base truncate">{operator}</CardTitle>
                                                         <button
                                                             onClick={() =>
                                                                 setCollapsed(p => ({
@@ -386,32 +386,34 @@ export function MetricsTab({
                                                                 </LineChart>
                                                             </ResponsiveContainer>
 
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        <TableHead>Month</TableHead>
-                                                                        <TableHead>Total Stake</TableHead>
-                                                                        <TableHead>Payout</TableHead>
-                                                                        <TableHead>GGR</TableHead>
-                                                                        <TableHead>GGR %</TableHead>
-                                                                        <TableHead>DET Levy</TableHead>
-                                                                        <TableHead>Gaming Tax</TableHead>
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {sorted.map((r, i) => (
-                                                                        <TableRow key={i}>
-                                                                            <TableCell>{r.month_year}</TableCell>
-                                                                            <TableCell>{formatMWK(r.total_stake)}</TableCell>
-                                                                            <TableCell>{formatMWK(r.total_winnings)}</TableCell>
-                                                                            <TableCell>{formatMWK(r.ggr)}</TableCell>
-                                                                            <TableCell>{(r.total_stake > 0 ? (r.ggr / r.total_stake) * 100 : 0).toFixed(2)}%</TableCell>
-                                                                            <TableCell>{formatMWK(r.det_levy)}</TableCell>
-                                                                            <TableCell>{formatMWK(r.gaming_tax)}</TableCell>
+                                                            <div className="w-full overflow-x-auto">
+                                                                <Table className="min-w-[720px]">
+                                                                    <TableHeader>
+                                                                        <TableRow>
+                                                                            <TableHead>Month</TableHead>
+                                                                            <TableHead>Total Stake</TableHead>
+                                                                            <TableHead>Payout</TableHead>
+                                                                            <TableHead>GGR</TableHead>
+                                                                            <TableHead>GGR %</TableHead>
+                                                                            <TableHead>DET Levy</TableHead>
+                                                                            <TableHead>Gaming Tax</TableHead>
                                                                         </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
+                                                                    </TableHeader>
+                                                                    <TableBody>
+                                                                        {sorted.map((r, i) => (
+                                                                            <TableRow key={i}>
+                                                                                <TableCell>{r.month_year}</TableCell>
+                                                                                <TableCell>{formatMWK(r.total_stake)}</TableCell>
+                                                                                <TableCell>{formatMWK(r.total_winnings)}</TableCell>
+                                                                                <TableCell>{formatMWK(r.ggr)}</TableCell>
+                                                                                <TableCell>{(r.total_stake > 0 ? (r.ggr / r.total_stake) * 100 : 0).toFixed(2)}%</TableCell>
+                                                                                <TableCell>{formatMWK(r.det_levy)}</TableCell>
+                                                                                <TableCell>{formatMWK(r.gaming_tax)}</TableCell>
+                                                                            </TableRow>
+                                                                        ))}
+                                                                    </TableBody>
+                                                                </Table>
+                                                            </div>
                                                         </CardContent>
                                                     )}
                                                 </Card>

@@ -348,7 +348,7 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                     <div className="flex items-center justify-between">
                         <div className="text-white">
                             <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-                            <p className="text-blue-100 mt-1 text-sm font-medium">Gaming Regulatory Reporting System</p>
+                            <p className="text-blue-100 mt-1 text-sm font-medium">Gaming Operator Reporting and Analysis System</p>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="text-right mr-2 hidden sm:block">
@@ -381,94 +381,331 @@ export function AdminDashboard({ onSignOut }: AdminDashboardProps) {
                         
                         {/* Sports Betting Graphics Background */}
                         <div className="absolute inset-0 opacity-45 dark:opacity-30 pointer-events-none">
-                            {/* Top Right Section */}
+                            {/* Even Distribution Grid - Top Row */}
                             <img 
-                                src="/src/assets/sports-betting/trophy.svg" 
-                                alt="Trophy" 
-                                className="absolute right-20 top-2 w-12 h-12 opacity-35"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/slot-machine.svg" 
-                                alt="Slot Machine" 
-                                className="absolute right-2 top-4 w-14 h-14 opacity-35"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/roulette-wheel.svg" 
-                                alt="Roulette Wheel" 
-                                className="absolute right-12 top-16 w-12 h-12 opacity-40"
-                            />
-                            
-                            {/* Middle Right Section */}
-                            <img 
-                                src="/src/assets/sports-betting/poker-cards.svg" 
-                                alt="Poker Cards" 
-                                className="absolute right-16 top-32 w-16 h-16 opacity-35"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/betting-ticket.svg" 
-                                alt="Betting Ticket" 
-                                className="absolute right-4 top-40 w-12 h-12 opacity-35"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/casino-chips.svg" 
-                                alt="Casino Chips" 
-                                className="absolute right-24 top-44 w-14 h-14 opacity-40"
-                            />
-                            
-                            {/* Lower Middle Right Section */}
-                            <img 
-                                src="/src/assets/sports-betting/basketball.svg" 
-                                alt="Basketball" 
-                                className="absolute right-8 top-60 w-12 h-12 opacity-35"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/soccer-ball.svg" 
-                                alt="Soccer Ball" 
-                                className="absolute right-20 top-68 w-12 h-12 opacity-30"
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Football Helmet" 
+                                className="absolute left-4 top-2 w-10 h-10 opacity-30"
                             />
                             <img 
                                 src="/src/assets/sports-betting/dice.svg" 
                                 alt="Dice" 
-                                className="absolute right-2 top-72 w-12 h-12 opacity-30"
-                            />
-                            
-                            {/* Bottom Right Section */}
-                            <img 
-                                src="/src/assets/sports-betting/casino-chips.svg" 
-                                alt="Casino Chips Stack" 
-                                className="absolute right-12 bottom-8 w-14 h-14 opacity-35"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/poker-cards.svg" 
-                                alt="More Cards" 
-                                className="absolute right-28 bottom-12 w-12 h-12 opacity-30"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/trophy.svg" 
-                                alt="Second Trophy" 
-                                className="absolute right-4 bottom-20 w-10 h-10 opacity-25"
-                            />
-                            
-                            {/* Additional Right Side Elements */}
-                            <img 
-                                src="/src/assets/sports-betting/roulette-wheel.svg" 
-                                alt="Small Roulette" 
-                                className="absolute right-32 top-24 w-10 h-10 opacity-25"
-                            />
-                            <img 
-                                src="/src/assets/sports-betting/slot-machine.svg" 
-                                alt="Small Slot" 
-                                className="absolute right-36 top-56 w-10 h-10 opacity-25"
+                                className="absolute left-1/6 top-4 w-8 h-8 opacity-35"
                             />
                             <img 
                                 src="/src/assets/sports-betting/basketball.svg" 
-                                alt="Small Basketball" 
-                                className="absolute right-40 bottom-16 w-10 h-10 opacity-20"
+                                alt="Basketball" 
+                                className="absolute left-1/4 top-6 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute left-1/3 top-3 w-8 h-8 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Slot Machine" 
+                                className="absolute left-5/12 top-8 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Poker Cards" 
+                                className="absolute left-1/2 top-2 w-10 h-10 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute left-7/12 top-10 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Roulette Wheel" 
+                                className="absolute left-2/3 top-4 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute left-3/4 top-6 w-8 h-8 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Betting Ticket" 
+                                className="absolute left-5/6 top-8 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute right-4 top-2 w-12 h-12 opacity-35"
+                            />
+                            
+                            {/* Even Distribution Grid - Upper Middle Row */}
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Slot Machine" 
+                                className="absolute left-2 top-28 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Betting Ticket" 
+                                className="absolute left-1/6 top-24 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute left-1/4 top-32 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/dice.svg" 
+                                alt="Dice" 
+                                className="absolute left-1/3 top-26 w-8 h-8 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Football Helmet" 
+                                className="absolute left-5/12 top-30 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute left-1/2 top-28 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Basketball" 
+                                className="absolute left-7/12 top-32 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Poker Cards" 
+                                className="absolute left-2/3 top-24 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute left-3/4 top-30 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Roulette Wheel" 
+                                className="absolute left-5/6 top-28 w-8 h-8 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute right-2 top-32 w-10 h-10 opacity-30"
+                            />
+                            
+                            {/* Even Distribution Grid - Middle Row */}
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Poker Cards" 
+                                className="absolute left-4 top-44 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Football Helmet" 
+                                className="absolute left-1/6 top-48 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Betting Ticket" 
+                                className="absolute left-1/4 top-40 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute left-1/3 top-52 w-16 h-16 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Slot Machine" 
+                                className="absolute left-5/12 top-36 w-14 h-14 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute left-1/2 top-44 w-12 h-12 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Roulette Wheel" 
+                                className="absolute left-7/12 top-48 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Basketball" 
+                                className="absolute left-2/3 top-40 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/dice.svg" 
+                                alt="Dice" 
+                                className="absolute left-3/4 top-52 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute left-5/6 top-44 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Betting Ticket" 
+                                className="absolute right-4 top-48 w-12 h-12 opacity-35"
+                            />
+                            
+                            {/* Even Distribution Grid - Lower Middle Row */}
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute left-2 top-64 w-14 h-14 opacity-35"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute left-1/6 top-68 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Football Helmet" 
+                                className="absolute left-1/4 top-60 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/dice.svg" 
+                                alt="Dice" 
+                                className="absolute left-1/3 top-72 w-10 h-10 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Basketball" 
+                                className="absolute left-5/12 top-68 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute left-1/2 top-64 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Poker Cards" 
+                                className="absolute left-7/12 top-72 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Slot Machine" 
+                                className="absolute left-2/3 top-60 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute left-3/4 top-68 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Football Helmet" 
+                                className="absolute left-5/6 top-64 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Basketball" 
+                                className="absolute right-2 top-68 w-12 h-12 opacity-35"
+                            />
+                            
+                            {/* Even Distribution Grid - Bottom Row */}
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Roulette" 
+                                className="absolute left-4 bottom-16 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/slot-machine.svg" 
+                                alt="Slot Machine" 
+                                className="absolute left-1/6 bottom-8 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Betting Ticket" 
+                                className="absolute left-1/4 bottom-12 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Football Helmet" 
+                                className="absolute left-1/3 bottom-20 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute left-5/12 bottom-8 w-12 h-12 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Soccer Ball" 
+                                className="absolute left-1/2 bottom-16 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Basketball" 
+                                className="absolute left-7/12 bottom-24 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Poker Cards" 
+                                className="absolute left-2/3 bottom-12 w-12 h-12 opacity-30"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Trophy" 
+                                className="absolute left-3/4 bottom-20 w-10 h-10 opacity-25"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/dice.svg" 
+                                alt="Dice" 
+                                className="absolute left-5/6 bottom-16 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/casino-chips.svg" 
+                                alt="Casino Chips" 
+                                className="absolute right-4 bottom-8 w-14 h-14 opacity-35"
+                            />
+                            
+                            {/* Additional Scattered Elements for Full Coverage */}
+                            <img 
+                                src="/src/assets/sports-betting/trophy.svg" 
+                                alt="Small Trophy" 
+                                className="absolute left-1/8 top-16 w-8 h-8 opacity-20"
                             />
                             <img 
                                 src="/src/assets/sports-betting/dice.svg" 
                                 alt="Small Dice" 
-                                className="absolute right-44 top-40 w-10 h-10 opacity-20"
+                                className="absolute left-3/8 top-56 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/betting-ticket.svg" 
+                                alt="Small Ticket" 
+                                className="absolute left-5/8 top-16 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/soccer-ball.svg" 
+                                alt="Small Soccer" 
+                                className="absolute left-7/8 top-56 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/football-helmet.svg" 
+                                alt="Small Football" 
+                                className="absolute left-1/8 bottom-32 w-8 h-8 opacity-20"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/basketball.svg" 
+                                alt="Small Basketball" 
+                                className="absolute left-3/8 bottom-40 w-8 h-8 opacity-15"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/poker-cards.svg" 
+                                alt="Small Cards" 
+                                className="absolute left-5/8 bottom-32 w-8 h-8 opacity-15"
+                            />
+                            <img 
+                                src="/src/assets/sports-betting/roulette-wheel.svg" 
+                                alt="Small Roulette" 
+                                className="absolute left-7/8 bottom-40 w-8 h-8 opacity-15"
                             />
                             
                             {/* Pattern Overlay */}

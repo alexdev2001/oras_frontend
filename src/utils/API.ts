@@ -450,7 +450,30 @@ export const reportsAPI = {
         }
 
         return response.json();
-    }
+    },
+
+    async downloadMaglaFile(operatorId: number): Promise<Blob> {
+        console.log('🚀 API: downloadMaglaFile called with operatorId:', operatorId);
+        const url = `${BASE_URL}/api/v1/reports/operator/${operatorId}/download`;
+        console.log('🌐 API: Fetching from URL:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: getAuthHeader(),
+        });
+
+        console.log('📡 API: Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('❌ API: Download failed:', error);
+            throw new Error(error.error || 'Failed to download MAGLA file');
+        }
+
+        const blob = await response.blob();
+        console.log('📦 API: Received blob:', { size: blob.size, type: blob.type });
+        return blob;
+    },
 };
 
 // Analytics API
@@ -533,7 +556,30 @@ export const analyticsAPI = {
         }
 
         return response.json();
-    }
+    },
+
+    async getMaglaPredictions(params: {
+        operator: string;
+        months: number;
+    }) {
+        const response = await fetch(
+            `${BASE_URL}/api/v1/magla-predictions`,
+            {
+                method: "POST",
+                headers: {
+                    ...getAuthHeader(),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(params),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch MAGLA predictions");
+        }
+
+        return response.json();
+    },
 };
 
 export const managementAPI = {

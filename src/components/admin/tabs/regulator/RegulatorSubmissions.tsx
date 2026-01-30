@@ -91,6 +91,36 @@ export function AdminRegulatorSubmissions({
     const [maglaCurrentSheetIndex, setMaglaCurrentSheetIndex] = useState(0);
     const [maglaPreviewRows, setMaglaPreviewRows] = useState<any[][] | null>(null);
     const [maglaPreviewError, setMaglaPreviewError] = useState<string | null>(null);
+
+    // Debug function to test base64 parsing
+    const debugBase64Parsing = (base64String: string) => {
+        try {
+            console.log('🔍 [RegulatorSubmissions] Debugging base64 parsing...');
+            console.log('Length:', base64String.length);
+            console.log('Sample:', base64String.substring(0, 100));
+            
+            // Check if it's valid base64
+            const isValidBase64 = /^[A-Za-z0-9+/]*={0,2}$/.test(base64String) && 
+                                base64String.length > 0 &&
+                                base64String.length % 4 === 0;
+            
+            console.log('Valid base64:', isValidBase64);
+            
+            if (!isValidBase64) {
+                console.error('❌ [RegulatorSubmissions] Invalid base64 format');
+                return false;
+            }
+            
+            // Try to decode
+            const binaryString = atob(base64String);
+            console.log('✅ [RegulatorSubmissions] Successfully decoded, binary length:', binaryString.length);
+            
+            return true;
+        } catch (error) {
+            console.error('❌ [RegulatorSubmissions] Base64 decoding failed:', error);
+            return false;
+        }
+    };
     const [maglaOpen, setMaglaOpen] = useState(true);
 
     // Convert selectedRegulator name to its ID
@@ -218,17 +248,23 @@ export function AdminRegulatorSubmissions({
             return;
         }
 
+        // Debug the base64 parsing
+        debugBase64Parsing(buffer.file_buffer);
+
         try {
-            if (!/^[0-9a-fA-F]*$/.test(buffer.file_buffer) || buffer.file_buffer.length % 2 !== 0) {
+            // Check if the buffer looks like valid base64 string
+            if (!/^[A-Za-z0-9+/]*={0,2}$/.test(buffer.file_buffer) || buffer.file_buffer.length % 4 !== 0) {
                 setMaglaSheets([]);
                 setMaglaPreviewRows(null);
                 setMaglaPreviewError('The selected file is not in the expected format.');
                 return;
             }
 
-            const bytes = new Uint8Array(buffer.file_buffer.length / 2);
-            for (let i = 0; i < buffer.file_buffer.length; i += 2) {
-                bytes[i / 2] = parseInt(buffer.file_buffer.substr(i, 2), 16);
+            // Convert base64 string to Uint8Array
+            const binaryString = atob(buffer.file_buffer);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
 
             const workbook = XLSX.read(bytes, { type: 'array' });
@@ -254,11 +290,16 @@ export function AdminRegulatorSubmissions({
     const changeMaglaSheet = (sheetIndex: number) => {
         if (!selectedMaglaBuffer) return;
         try {
-            if (!/^[0-9a-fA-F]*$/.test(selectedMaglaBuffer.file_buffer) || selectedMaglaBuffer.file_buffer.length % 2 !== 0) return;
-            const bytes = new Uint8Array(selectedMaglaBuffer.file_buffer.length / 2);
-            for (let i = 0; i < selectedMaglaBuffer.file_buffer.length; i += 2) {
-                bytes[i / 2] = parseInt(selectedMaglaBuffer.file_buffer.substr(i, 2), 16);
+            // Check if the buffer looks like valid base64 string
+            if (!/^[A-Za-z0-9+/]*={0,2}$/.test(selectedMaglaBuffer.file_buffer) || selectedMaglaBuffer.file_buffer.length % 4 !== 0) return;
+            
+            // Convert base64 string to Uint8Array
+            const binaryString = atob(selectedMaglaBuffer.file_buffer);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
+            
             const workbook = XLSX.read(bytes, { type: 'array' });
             const sheetName = workbook.SheetNames[sheetIndex];
             if (!sheetName) return;
@@ -313,19 +354,59 @@ export function AdminRegulatorSubmissions({
     };
 
     /* -------------------- DOWNLOAD -------------------- */
-    const downloadFile = async (reportId: number, fileName: string) => {
+    const downloadFile = async (reportId: number, fileName: string, regulatorName?: string) => {
+        console.log('🔥 Download triggered:', { reportId, fileName, regulatorName });
         try {
-            const blob = await reportsAPI.getRegulatorSubmitFile(reportId);
+            // Show loading state
+            let blob;
+            
+            if (regulatorName?.toLowerCase().includes('igj')) {
+                // Use IGJ-specific endpoint for IGJ regulator
+                console.log('📡 Calling API getRegulatorSubmitFile for IGJ regulator');
+                blob = await reportsAPI.getRegulatorSubmitFile(reportId);
+            } else {
+                // Use standard report endpoint for other regulators (MAGLA)
+                console.log('📡 Calling API downloadReportFile for MAGLA regulator');
+                blob = await reportsAPI.downloadReportFile(reportId);
+            }
+            
+            console.log('📦 Received blob:', { size: blob.size, type: blob.type });
+            
+            // Validate blob before proceeding
+            if (!blob || blob.size === 0) {
+                throw new Error('Downloaded file is empty or invalid');
+            }
+
+            // Create object URL and wait for it to be ready
             const url = URL.createObjectURL(blob);
+            console.log('🔗 Created object URL:', url);
+            
+            // Create download link
             const link = document.createElement('a');
             link.href = url;
             link.download = fileName;
+            link.style.display = 'none';
+            
+            // Add to DOM, trigger download, then cleanup
             document.body.appendChild(link);
+            
+            // Use a small delay to ensure the blob is fully processed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            console.log('⬇️ Triggering download for:', fileName);
             link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            
+            // Cleanup after a longer delay to ensure download starts
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                console.log('🧹 Cleaned up download link');
+            }, 1000);
+            
         } catch (err) {
-            console.error('Failed to download file', err);
+            console.error('❌ Failed to download file', err);
+            // Show user-friendly error message
+            alert('Failed to download file. Please try again.');
         }
     };
 
@@ -431,10 +512,10 @@ export function AdminRegulatorSubmissions({
                                                             onClick={() => selectMaglaFile(report)}
                                                         >
                                                             <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-2 min-w-0">
                                                                     <FileText className="size-4 text-muted-foreground" />
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-sm font-medium text-foreground">{report.report_file.filename}</span>
+                                                                        <span className="text-sm font-medium text-foreground truncate">{report.report_file.filename}</span>
                                                                         <span className="text-xs text-muted-foreground">{formatMonthYear(maglaCreatedAtByReportId.get(report.report_id) ?? report.date_time)}</span>
                                                                     </div>
                                                                 </div>
@@ -455,9 +536,9 @@ export function AdminRegulatorSubmissions({
                                 <h3 className="text-lg font-semibold mb-4">File Preview</h3>
                                 {selectedMaglaReport ? (
                                     <div className="border rounded-lg p-4">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <h4 className="font-medium">{selectedMaglaReport.report_file.filename}</h4>
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                            <div className="min-w-0">
+                                                <h4 className="font-medium truncate">{selectedMaglaReport.report_file.filename}</h4>
                                                 <div className="text-sm text-muted-foreground mb-3">
                                                     {formatMonthYear(maglaCreatedAtByReportId.get(selectedMaglaReport.report_id) ?? selectedMaglaReport.date_time)}
                                                 </div>
@@ -465,7 +546,7 @@ export function AdminRegulatorSubmissions({
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => downloadFile(selectedMaglaReport.report_id, selectedMaglaReport.report_file.filename)}
+                                                onClick={() => downloadFile(selectedMaglaReport.report_id, selectedMaglaReport.report_file.filename, 'MAGLA')}
                                             >
                                                 <Download className="size-4 mr-2" />
                                                 Download
@@ -639,7 +720,8 @@ export function AdminRegulatorSubmissions({
                                                         onClick={() =>
                                                             downloadFile(
                                                                 Number(submission.id),
-                                                                submission.fileName
+                                                                submission.fileName,
+                                                                submission.regulatorName
                                                             )
                                                         }
                                                     >
